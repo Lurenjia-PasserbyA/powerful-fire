@@ -71,7 +71,7 @@ for (const target of targets) {
   const zipName = `PowerfulFire-${version}-${target.label}.zip`;
   const zipPath = path.join(outRoot, zipName);
   fs.rmSync(zipPath, { force: true });
-  execFileSync('zip', ['-qr', zipPath, path.basename(appDir)], { cwd: rawRoot });
+  execFileSync('zip', ['-qry', zipPath, path.basename(appDir)], { cwd: rawRoot });
 
   const hash = crypto.createHash('sha256').update(fs.readFileSync(zipPath)).digest('hex');
   hashes.push(`${hash}  ${zipName}`);
