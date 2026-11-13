@@ -36,6 +36,8 @@ export interface HudSnapshot {
 export interface Hud {
   update(snapshot: HudSnapshot): void;
   notify(text: string, kind?: 'warn' | 'info'): void;
+  levelUp(level: number): void;
+  hurtFlash(): void;
   reveal(): void;
   setTouchMode(active: boolean): void;
   readonly root: HTMLElement;
@@ -63,6 +65,8 @@ export function createHud(root: HTMLElement): Hud {
   const staminaTrack = requireEl('hud-stamina-track');
   const zoneChip = requireEl('hud-zone');
   const toast = requireEl('hud-toast');
+  const levelup = requireEl('hud-levelup');
+  const hurt = requireEl('hud-hurt');
   const ultValue = requireEl('hud-ult-value');
   const ultFill = requireEl('hud-ult-fill');
   const ultRing = requireEl('hud-ult-ring');
@@ -92,6 +96,19 @@ export function createHud(root: HTMLElement): Hud {
         toast.className = 'toast';
         toastTimer = null;
       }, 1600);
+    },
+    levelUp(level: number): void {
+      levelup.textContent = `LEVEL ${level}`;
+      levelup.className = 'levelup is-on';
+      window.setTimeout(() => {
+        levelup.className = 'levelup';
+      }, 1200);
+    },
+    hurtFlash(): void {
+      hurt.className = 'hurt is-on';
+      window.setTimeout(() => {
+        hurt.className = 'hurt';
+      }, 380);
     },
     reveal(): void {
       root.classList.add('is-ready');

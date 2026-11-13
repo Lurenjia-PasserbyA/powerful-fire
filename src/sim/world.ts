@@ -28,6 +28,9 @@ export interface GameEvents extends Record<string, unknown> {
   'shop:purchase': { skillId: string; price: number };
   'base:upgrade': { kind: string; level: number };
   'ui:notice': { text: string; kind: string };
+  'skill:cast': { id: string; behavior: string; tier: string; x: number; y: number };
+  'player:dodge': { x: number; y: number };
+  'player:hurt': { amount: number };
 }
 
 export interface GameProgress {

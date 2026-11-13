@@ -120,6 +120,14 @@ function executeSkill(world: GameWorld, id: EntityId, player: Player, skillId: s
   if (!def || !transform) return;
   if (def.data.behavior === 'minigun') player.minigunSpin = Math.min(6, player.minigunSpin + 0.12);
 
+  world.bus.emit('skill:cast', {
+    id: def.data.id,
+    behavior: def.data.behavior,
+    tier: def.data.tier,
+    x: transform.x,
+    y: transform.y,
+  });
+
   const ctx: CastContext = {
     caster: id,
     origin: { x: transform.x, y: transform.y },

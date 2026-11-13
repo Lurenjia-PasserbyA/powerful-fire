@@ -51,6 +51,7 @@ export function playerSystem(world: GameWorld, dt: number): void {
         player.dodgeTimer = dodgeCfg.duration;
         player.dodgeCooldown = dodgeCfg.cooldown;
         player.invulnerable = Math.max(player.invulnerable, dodgeCfg.invulnerable);
+        world.bus.emit('player:dodge', { x: transform.x, y: transform.y });
       }
     }
   }

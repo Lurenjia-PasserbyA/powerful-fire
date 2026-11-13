@@ -6,6 +6,9 @@ import { buildRegistry } from './skills/registry';
 import { AimResolver } from './input/aim-resolver';
 import { Keyboard } from './input/keyboard';
 import { Mouse, type PointerSnapshot } from './input/mouse';
+import { AudioBus } from './audio/audiobus';
+import { hookAudio } from './audio/audio-hooks';
+import { combatHeat } from './audio/heat';
 import { BaseView } from './render/base-view';
 import { Camera } from './render/camera';
 import { createCrosshair } from './render/crosshair';
@@ -22,6 +25,7 @@ import { installDebug, type DebugHandle } from './app/debug';
 import { FloatingTextLayer } from './ui/floating-text';
 import { createCampUi } from './ui/camp';
 import { createHud } from './ui/hud';
+import { createAudioPanel } from './ui/audio-panel';
 import { createShop } from './ui/shop';
 import { createTouch } from './ui/touch';
 import type { Vec2 } from './types';
@@ -53,6 +57,14 @@ async function bootstrap(): Promise<void> {
   }
 
   const hud = createHud(hudRoot);
+  const audio = new AudioBus();
+  const audioPanel = createAudioPanel(hudRoot, audio);
+  const unlockAudio = (): void => {
+    audio.init();
+    audioPanel.refresh(audio.settings, audio.isMuted);
+  };
+  window.addEventListener('pointerdown', unlockAudio, { once: true });
+  window.addEventListener('keydown', unlockAudio, { once: true });
   const render = await createRenderApp(stage, config, (viewport) => {
     hudRoot.style.left = `${viewport.offsetX}px`;
     hudRoot.style.top = `${viewport.offsetY}px`;
@@ -112,6 +124,9 @@ async function bootstrap(): Promise<void> {
   });
 
   world.bus.on('ui:notice', (payload) => hud.notify(payload.text, payload.kind === 'info' ? 'info' : 'warn'));
+  world.bus.on('player:levelup', (payload) => hud.levelUp(payload.level));
+  world.bus.on('player:hurt', () => hud.hurtFlash());
+  hookAudio(audio, world);
 
   const mapPointer = (clientX: number, clientY: number): Vec2 => {
     const rect = stage.getBoundingClientRect();
@@ -219,6 +234,7 @@ async function bootstrap(): Promise<void> {
     worldRenderer.sync(world, alpha);
     floating.sync(world, camera);
     crosshair.update(viewport.toLogical(pointer.screen), pointer.inside && !touchMode);
+    audio.update(frameSeconds, combatHeat(world, playerId));
 
     hudAccumulator += frameSeconds;
     if (hudAccumulator >= hudInterval) {
@@ -265,6 +281,7 @@ async function bootstrap(): Promise<void> {
     layers: render.layers,
     shop,
     camp,
+    audio,
     debug: installDebug(world, playerId),
   };
 

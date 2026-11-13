@@ -1,7 +1,7 @@
-# Powerful Fire — M1 + M2 + M3 + M4（基地 / 体力 / 升级台）
+# Powerful Fire — M1 至 M5（战斗 / 商店 / 基地 / 体力 / 音频）
 
 > 按《Powerful Fire —— AI 开发提示词文档》第 16 节里程碑推进。
-> 在 M1 骨架、M2 战斗闭环、M3 初步（技能注册表 / 商店 / 装配 / 冷却 / 换槽）与触屏之上，本次交付 **M4：安全基地（技能商店 / 升级台 / 自动回血）** 与 **体力（Stamina）系统**。
+> M1 骨架、M2 战斗、M3 商店/装配/冷却、M4 安全基地 + 体力之上，本次交付 **M5：四轨音频总线（机械 + 法术双分层）与 UI 缓出动画**。
 > 验收对照：出基地即被追击、回到基地仇恨立即清零且不掉血、商店 / 升级台交互、三类升级扣 XP 生效、冲刺与闪避耗体力、体力见底禁止闪避与技能失败提示。
 
 ## 运行
@@ -90,6 +90,15 @@ pnpm preview        # 预览生产构建
 - HUD 左下 HP 条下方新增 5px 细体力条（黄色，低于 25% 转红并发光）+ 数值；`ui:notice` 事件经 `sendNotice` 1.4s 节流后显示顶部 toast。
 - 死亡复活回基地并把体力补满；升级台购买的伤害加成写 `player.damageMult`，在 `applyDamage` 中与熔蚀 / 超载乘区相乘。
 
+
+### M5：音频与 UI 动效
+
+- `src/audio/synth.ts`：纯 WebAudio 合成，无采样资源；振荡器 + 滤波包络 + 低噪缓冲。
+- `src/audio/audiobus.ts`：master / sfx / ui / music 四轨独立增益，`DynamicsCompressor`（threshold -8dB、ratio 12）兜底防破音；32 音上限，超出按权重淘汰最轻音；每个音效 ±5% 随机音高；音乐强度随 900 单位内敌人数平滑上升，基地内回落。
+- `src/audio/sfx-map.ts`：17 类事件的双分层音色表（机械层 + 法术层），覆盖火球 / 法棍 / 喷火 / 火箭 / 法术 / 陨石 / 大招 / 命中 / 击杀 / 闪避 / 受伤 / 升级 / UI 点击 / 购买 / 升级台 / Boss 咆哮与倒地。
+- `src/audio/audio-hooks.ts`：订阅 `skill:cast`、`player:dodge`、`player:hurt`、`enemy:kill`、`shop:purchase`、`base:upgrade` 等逻辑事件，位置只用于声像。
+- UI：HUD 右上角新增音频按钮与四轨滑块 + 静音（打开面板不暂停）；等级横幅（ease-out-back 弹入）、受伤红色暗角（380ms 缓出）、提示 toast、面板开合均使用 `--ease-out-*` 令牌，全项目无 `linear` 缓动（仅 `linear-gradient` 背景纹理）。
+
 ### 渲染
 
 `src/render/enemy-view.ts`、`projectile-view.ts`、`area-view.ts`、`orb-view.ts`、`combat-views.ts`：
@@ -127,9 +136,12 @@ pnpm preview        # 预览生产构建
 | 暂停 | 升级台打开时 `world.elapsed` 冻结（89.5 保持不动），Esc / F 关闭恢复 |
 | 交互 | 摊位旁 F 打开 Tab 商店、铁砧旁 F 打开升级台；提示条按位置切换文案 |
 | 帧率 | 63 个敌人 + 基地场景：60fps（16.6ms/帧，逻辑步 1，CANVAS 2D） |
+| 音频总线 | 首次点击后 AudioContext `running`（44.1kHz）；连播 80 次大招音，活动音源稳定在 32（上限）；Music 滑块 55%→30% 即时生效 |
+| 等级/受伤表现 | `player:levelup` 触发「LEVEL n」横幅；出基地受击 HP 100→88 且暗角闪烁，class 自动回落 |
+| 音频覆盖 | 火球/法棍/喷火/火箭/法术/陨石/大招/闪避/受伤/击杀/升级/购买/升级台均有独立双分层音色 |
 | 兼容 | WebGPU 初始化失败仅告警并降级 Canvas 2D；`pnpm build`（tsc strict + vite）通过 |
 
-调试句柄：`window.__PF__`（world / camera / loop / backend / renderer / layers / shop / camp）与 `__PF__.debug`（spawnEnemy / addXp / giveUltimate / teleport / upgrade / setStamina）。
+调试句柄：`window.__PF__`（world / camera / loop / backend / renderer / layers / shop / camp / audio）与 `__PF__.debug`（spawnEnemy / addXp / giveUltimate / teleport / upgrade / setStamina）。
 
 ## 已知边界（下一里程碑）
 
@@ -147,9 +159,10 @@ src/
   data/    config(.json/.ts) skills(.json/.ts) enemies(.json/.ts) palette
   input/   keyboard mouse aim-resolver
   app/     hud-bridge debug pf-global.d.ts
+  audio/   audiobus synth sfx-map audio-hooks heat
   sim/     components runtime world spawn tick base upgrades
            systems/ aim input movement player casting enemies damage projectiles areas status spawner pickups notice
   skills/  registry helpers behaviors/(baguette heatgun projectile sorcery ultimate)
   render/  pixi-app viewport camera layers ground base-view player-view enemy-view projectile-view area-view orb-view combat-views crosshair aim-preview renderer
-  ui/      hud shop camp touch floating-text styles/acrylic.css
+  ui/      hud shop camp touch audio-panel floating-text styles/acrylic.css
 ```
