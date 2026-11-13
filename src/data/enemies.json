@@ -1,0 +1,14 @@
+{
+  "ashwalker": {
+    "name": "焦炭行者",
+    "hp": 46,
+    "speed": 115,
+    "radius": 17,
+    "damage": 12,
+    "attackRange": 48,
+    "windup": 0.45,
+    "attackCooldown": 1.2,
+    "xp": 12,
+    "knockbackResist": 0.3
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "viewport": {
+    "logicalWidth": 1280,
+    "logicalHeight": 720,
+    "background": "#0B0A0E"
+  },
+  "loop": {
+    "stepHz": 60,
+    "maxSubSteps": 5,
+    "maxFrameSeconds": 0.25
+  },
+  "world": {
+    "width": 5000,
+    "height": 5000,
+    "chunkSize": 512,
+    "preloadChunks": 2,
+    "gridSpacing": 128
+  },
+  "player": {
+    "speed": 240,
+    "radius": 18,
+    "maxHp": 100,
+    "startingLevel": 1,
+    "xpToNextLevel": 100,
+    "xpGrowth": 1.45,
+    "facingLerp": 0.45,
+    "dodge": {
+      "cooldown": 1.6,
+      "distance": 210,
+      "duration": 0.22,
+      "invulnerable": 0.3
+    },
+    "ultimateChargePerDamage": 0.0007,
+    "ultimateChargePerKill": 0.02
+  },
+  "camera": {
+    "followLerp": 0.12,
+    "zoom": 1
+  },
+  "aim": {
+    "lerp": 0.35,
+    "delayMs": 60
+  },
+  "spawn": {
+    "x": 250,
+    "y": 320
+  },
+  "base": {
+    "x": 0,
+    "y": 0,
+    "width": 500,
+    "height": 500,
+    "spawn": {
+      "x": 250,
+      "y": 320
+    },
+    "healPerSecond": 5,
+    "shop": {
+      "x": 250,
+      "y": 140,
+      "radius": 78
+    },
+    "upgrade": {
+      "x": 395,
+      "y": 355,
+      "radius": 78
+    }
+  },
+  "rng": {
+    "seed": 20261113
+  },
+  "bindings": {
+    "moveUp": [
+      "KeyW",
+      "ArrowUp"
+    ],
+    "moveDown": [
+      "KeyS",
+      "ArrowDown"
+    ],
+    "moveLeft": [
+      "KeyA",
+      "ArrowLeft"
+    ],
+    "moveRight": [
+      "KeyD",
+      "ArrowRight"
+    ],
+    "interact": [
+      "KeyF",
+      "KeyE"
+    ],
+    "shop": [
+      "Tab"
+    ],
+    "menu": [
+      "Escape"
+    ]
+  },
+  "hud": {
+    "refreshHz": 12
+  },
+  "debug": {
+    "decorCount": 260,
+    "showGrid": true,
+    "showAimPreview": true
+  },
+  "spawner": {
+    "interval": 3.4,
+    "waveBase": 2,
+    "wavePerLevel": 0.8,
+    "maxAlive": 28,
+    "spawnMinDistance": 640,
+    "spawnMaxDistance": 980,
+    "despawnDistance": 1700,
+    "aggroDistance": 900
+  },
+  "economy": {
+    "levelXpBase": 100,
+    "levelXpGrowth": 1.45,
+    "deathXpPenalty": 0.2
+  },
+  "combat": {
+    "statusTick": 0.5,
+    "maxProjectiles": 400,
+    "maxOrbs": 160,
+    "maxDamageNumbers": 40,
+    "knockbackDecay": 8,
+    "overdriveDamageMult": 2,
+    "overheatDecay": 18,
+    "burnDps": 6,
+    "burnDuration": 2.5,
+    "flammableDecay": 0.5,
+    "corrodingDecay": 0.4
+  },
+  "stamina": {
+    "max": 100,
+    "regenPerSecond": 16,
+    "baseRegenPerSecond": 30,
+    "regenDelay": 0.5,
+    "dodgeCost": 25,
+    "sprintDrainPerSecond": 14,
+    "sprintMultiplier": 1.45,
+    "lowThreshold": 25,
+    "powerSkillCost": 12,
+    "ultimateCost": 18
+  },
+  "upgrades": {
+    "hp": {
+      "step": 12,
+      "costBase": 120,
+      "costGrowth": 1.35,
+      "maxLevel": 8
+    },
+    "speed": {
+      "stepPercent": 0.04,
+      "costBase": 150,
+      "costGrowth": 1.4,
+      "maxLevel": 6
+    },
+    "damage": {
+      "stepPercent": 0.06,
+      "costBase": 180,
+      "costGrowth": 1.45,
+      "maxLevel": 6
+    }
+  },
+  "startLoadout": {
+    "unlocked": [
+      "proj_fireball"
+    ],
+    "slots": [
+      "proj_fireball",
+      null,
+      null
+    ],
+    "ultimate": null
+  }
+}
