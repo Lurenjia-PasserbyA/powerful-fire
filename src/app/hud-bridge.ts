@@ -52,6 +52,7 @@ export function buildSnapshot(
     ultimate: ultData ? { name: ultData.name, charge: player.ultimateCharge } : null,
     kills: player.kills,
     wave: world.wave,
+    biomeName: world.biomeName,
     stamina: player.stamina,
     staminaMax: player.staminaMax,
     inBase: isInBase(world, transform),

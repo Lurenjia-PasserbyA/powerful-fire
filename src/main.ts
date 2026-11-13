@@ -110,6 +110,7 @@ async function bootstrap(): Promise<void> {
   world.bus.on('player:hurt', () => hud.hurtFlash());
   world.bus.on('boss:phase', () => hud.notify('灰烬领主进入狂暴', 'warn'));
   world.bus.on('boss:defeated', (payload) => hud.notify(`${payload.name} 被击败`, 'info'));
+  world.bus.on('biome:enter', (payload) => hud.notify(`进入 ${payload.name}`, 'info'));
   hookAudio(audio, world);
   const saveHandle = setupSave(saveStore, world, audio, hud);
   const net = await setupNet(world, render.layers, hudRoot);
@@ -118,9 +119,57 @@ async function bootstrap(): Promise<void> {
     const rect = stage.getBoundingClientRect();
     return viewport.toLogical({ x: clientX - rect.left, y: clientY - rect.top });
   };
-  const touch = createTouch({ host: touchRoot, mapPointer, onShop: () => shop.toggle() });
+  const touch = createTouch({
+    host: touchRoot,
+    mapPointer,
+    onShop: () => shop.toggle(),
+    autoAim: () => nearestEnemyWorld(),
+  });
   touch.setActive(touchMode);
   hud.setTouchMode(touchMode);
+
+  /** 触屏自动瞄准：取最近的可攻击敌人，用于自动开火。 */
+  function nearestEnemyWorld(): Vec2 | null {
+    const playerTransform = world.transforms.get(playerId);
+    if (!playerTransform) return null;
+    let best: Vec2 | null = null;
+    let bestDistance = 340;
+    for (const id of world.enemies.keys()) {
+      const transform = world.transforms.get(id);
+      const health = world.healths.get(id);
+      if (!transform || !health || health.hp <= 0) continue;
+      const distance = Math.hypot(transform.x - playerTransform.x, transform.y - playerTransform.y);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = { x: transform.x, y: transform.y };
+      }
+    }
+    return best;
+  }
+
+  /** 瞄准辅助：目标与拖动方向的夹角小于 20° 时吸附。 */
+  function assistAim(aim: Vec2): Vec2 {
+    const playerTransform = world.transforms.get(playerId);
+    if (!playerTransform) return aim;
+    const baseAngle = Math.atan2(aim.y - playerTransform.y, aim.x - playerTransform.x);
+    let best: Vec2 | null = null;
+    let bestDelta = 0.34;
+    for (const id of world.enemies.keys()) {
+      const transform = world.transforms.get(id);
+      const health = world.healths.get(id);
+      if (!transform || !health || health.hp <= 0) continue;
+      const distance = Math.hypot(transform.x - playerTransform.x, transform.y - playerTransform.y);
+      if (distance > 420) continue;
+      const angle = Math.atan2(transform.y - playerTransform.y, transform.x - playerTransform.x);
+      let delta = Math.abs(angle - baseAngle);
+      if (delta > Math.PI) delta = Math.PI * 2 - delta;
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        best = { x: transform.x, y: transform.y };
+      }
+    }
+    return best ?? aim;
+  }
 
   const backend = detectBackend(render.app);
   // 无 GPU（Canvas 2D 软渲染）时关闭背景模糊，保住 60fps；有 GPU 时保留完整亚克力
@@ -162,14 +211,21 @@ async function bootstrap(): Promise<void> {
     if (touchMode) {
       move = touch.state.move;
       if (touch.state.aim) {
-        aimLogical = touch.state.aim;
+        aimWorld = assistAim(camera.toWorld(touch.state.aim));
+        aimLogical = camera.toLogical(aimWorld);
         aimResolver.reset(aimLogical);
-        aimWorld = camera.toWorld(aimLogical);
+      } else if (touch.state.autoFire) {
+        const target = nearestEnemyWorld();
+        if (target) {
+          aimWorld = target;
+          aimLogical = camera.toLogical(target);
+          aimResolver.reset(aimLogical);
+        }
       }
-      fireHeld = touch.state.fireHeld;
-      const pressed = touch.consume();
-      dodgePressed = pressed.dodge;
-      ultPressed = pressed.ult || ultPressed;
+      const ability = touch.consume();
+      fireHeld = touch.state.fireHeld || (touch.state.autoFire && nearestEnemyWorld() !== null);
+      dodgePressed = ability.dodge;
+      ultPressed = ability.ult || ultPressed;
       if (touch.state.slotRequest !== null) {
         slotRequest = touch.state.slotRequest;
         touch.state.slotRequest = null;
@@ -242,6 +298,7 @@ async function bootstrap(): Promise<void> {
         touch.setSlots(names, player.activeSlot);
         const ultData = player.ultimate ? registry.get(player.ultimate)?.data : undefined;
         touch.setUltimate(ultData?.name ?? null, player.ultimateCharge);
+        touch.setStamina(player.staminaMax > 0 ? player.stamina / player.staminaMax : 0, player.stamina < 25);
         const transform = world.transforms.get(playerId);
         const facility = transform ? facilityAt(world, transform) : null;
         camp.update(transform ? isInBase(world, transform) : false, facility);
@@ -277,6 +334,7 @@ async function bootstrap(): Promise<void> {
     audio,
     save: saveStore,
     net,
+    touch,
     debug: installDebug(world, playerId),
   };
 

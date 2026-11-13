@@ -1,4 +1,5 @@
 import type { Vec2 } from '../types';
+import type { BiomeId } from '../data/biomes';
 
 /** 世界变换：prev* 字段供渲染插值使用（逻辑只读 x/y/angle）。 */
 export interface Transform {
@@ -89,6 +90,9 @@ export interface Player {
   noticeCooldown: number;
   /** 联机客机玩家由主机模拟，输入来自网络。 */
   remote: boolean;
+  /** 当前所在群系与雾区减速倍率（1 = 正常）。 */
+  biome: BiomeId;
+  envSlow: number;
 }
 
 /** 瞄准点（世界坐标），由 AimResolver 平滑后写入，技能释放统一读这里。 */

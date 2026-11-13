@@ -1,7 +1,8 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Text } from 'pixi.js';
 import type { Rng } from '../core/rng';
 import type { GameConfig } from '../data/config';
 import { palette } from '../data/palette';
+import { BIOMES, ZONES, hazardsOf } from '../data/biomes';
 import type { Vec2 } from '../types';
 
 export interface GroundOptions {
@@ -19,6 +20,7 @@ export function createGround(options: GroundOptions): Container {
   container.label = 'ground';
   container.addChild(
     createBase(options.config),
+    createBiomeRegions(),
     createGrid(options),
     createDecor(options),
     createSpawnMarker(options.spawn),
@@ -47,8 +49,56 @@ function createBase(cfg: GameConfig): Graphics {
   return g;
 }
 
-function createGrid(options: GroundOptions): Graphics {
-  const { config: cfg } = options;
+/** 群系区域：焦木林/熔岩裂谷的半透明色块、边界与雾/岩浆危害圈。 */
+function createBiomeRegions(): Container {
+  const container = new Container();
+  container.label = 'biomes';
+  const g = new Graphics();
+  g.label = 'biome-regions';
+
+  for (const zone of ZONES) {
+    if (zone.id === 'ember') continue;
+    const def = BIOMES[zone.id];
+    g.rect(zone.x, zone.y, zone.width, zone.height).fill({ color: def.groundAlt, alpha: 0.42 });
+    g.rect(zone.x, zone.y, zone.width, zone.height).stroke({ width: 3, color: def.accent, alpha: 0.25 });
+    for (const hazard of hazardsOf(zone.id)) {
+      if (hazard.kind === 'lava') {
+        g.circle(hazard.x, hazard.y, hazard.radius).fill({ color: 0xff4b1f, alpha: 0.16 });
+        g.circle(hazard.x, hazard.y, hazard.radius).stroke({ width: 2, color: 0xff8a3d, alpha: 0.34 });
+        g.circle(hazard.x, hazard.y, hazard.radius * 0.55).fill({ color: 0xffb703, alpha: 0.08 });
+      } else {
+        g.circle(hazard.x, hazard.y, hazard.radius).fill({ color: def.fog, alpha: 0.28 });
+        g.circle(hazard.x, hazard.y, hazard.radius).stroke({ width: 2, color: def.accent, alpha: 0.16 });
+      }
+    }
+  }
+  container.addChild(g);
+
+  for (const zone of ZONES) {
+    if (zone.id === 'ember') continue;
+    const def = BIOMES[zone.id];
+    const title = new Text({
+      text: def.name,
+      style: { fontFamily: 'monospace', fontSize: 34, fill: def.accent, letterSpacing: 10 },
+    });
+    title.anchor.set(0.5);
+    title.x = zone.x + zone.width / 2;
+    title.y = zone.y + 70;
+    title.alpha = 0.24;
+    const subtitle = new Text({
+      text: `${def.subtitle} · ${def.hazardHint}`,
+      style: { fontFamily: 'monospace', fontSize: 15, fill: def.accent, letterSpacing: 3 },
+    });
+    subtitle.anchor.set(0.5);
+    subtitle.x = title.x;
+    subtitle.y = title.y + 34;
+    subtitle.alpha = 0.2;
+    container.addChild(title, subtitle);
+  }
+  return container;
+}
+
+function createGrid(options: GroundOptions): Graphics {  const { config: cfg } = options;
   const g = new Graphics();
   g.label = 'ground-grid';
   if (!cfg.debug.showGrid) return g;

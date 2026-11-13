@@ -3,21 +3,27 @@ import { NetView } from '../render/net-view';
 import { BroadcastTransport, WebSocketTransport } from '../net/transport';
 import { HostSession } from '../net/host';
 import { ClientSession } from '../net/client';
-import type { Transport } from '../net/protocol';
+import type { NetMessage, Transport } from '../net/protocol';
 import type { GameWorld } from '../sim/world';
 import { createNetPanel } from '../ui/net-panel';
+import { isSameOriginBroadcast, toWsUrl } from '../net/discovery';
 
 export interface NetRuntime {
   active: boolean;
   isClient: boolean;
   room: string;
+  serverUrl: string | null;
   status: string;
+  latency: number | null;
   update(dt: number): void;
   sync(): void;
 }
 
-function makeTransport(mode: 'lan-host' | 'lan-client', room: string, addr: string | null): Transport {
-  return addr ? new WebSocketTransport(mode, room) : new BroadcastTransport(room, mode);
+type Role = 'lan-host' | 'lan-client' | 'server';
+
+function labelFor(role: Role, ws: boolean): string {
+  if (!ws) return '本机联机';
+  return role === 'lan-host' || role === 'server' ? '服务器房主' : '服务器客机';
 }
 
 /** 从 URL 读取联机参数；无参数返回 null，保持单机零网络开销。 */
@@ -26,41 +32,92 @@ export async function setupNet(
   layers: RenderLayers,
   hudRoot: HTMLElement,
 ): Promise<NetRuntime | null> {
-  createNetPanel(hudRoot);
   const params = new URLSearchParams(window.location.search);
   const mode = params.get('net');
-  if (mode !== 'host' && mode !== 'join' && mode !== 'client') return null;
+  createNetPanel(hudRoot);
+  if (mode !== 'host' && mode !== 'join' && mode !== 'client' && mode !== 'server') return null;
+
   const room = (params.get('room') ?? 'PF').toUpperCase().slice(0, 8);
-  const addr = params.get('addr');
+  const rawAddr = params.get('addr');
   const name = (params.get('name') ?? (mode === 'host' ? 'Host' : 'Player')).slice(0, 12);
-  const transport = makeTransport(mode === 'host' ? 'lan-host' : 'lan-client', room, addr);
+  const local = mode !== 'server' && isSameOriginBroadcast(rawAddr);
+  if (mode === 'server' && !rawAddr) {
+    window.alert('请在大厅填写专用服务器地址（如 http://127.0.0.1:8787）。');
+    return null;
+  }
+  const serverUrl = local ? null : (rawAddr ?? '').trim();
+  const wsUrl = local ? null : toWsUrl(serverUrl ?? '');
+  const role: Role = mode === 'host' ? 'lan-host' : 'lan-client';
 
   const chip = document.createElement('div');
   chip.id = 'hud-net';
   chip.className = 'hud-net';
-  chip.textContent = mode === 'host' ? `LAN 房主 · ${room}` : `LAN 连接中 · ${room}`;
+  chip.textContent = `${labelFor(role, !local)} · ${room}`;
   hudRoot.appendChild(chip);
 
   let status = chip.textContent;
+  let latency: number | null = null;
+  let transport: Transport | null = null;
+  let disposed = false;
+
   const setStatus = (text: string): void => {
     status = text;
     chip.textContent = text;
   };
+  const refreshChip = (): void => {
+    const parts = [`${labelFor(role, !local)} · ${room}`, `${status}`];
+    if (latency !== null) parts.push(`${latency}ms`);
+    chip.textContent = parts.join(' · ');
+  };
+  const pollLatency = (): void => {
+    if (!transport || local) return;
+    void transport.ping().then((value) => {
+      latency = value;
+      refreshChip();
+    });
+  };
+  const latencyTimer = window.setInterval(pollLatency, 5000);
+  window.addEventListener('beforeunload', () => {
+    disposed = true;
+    window.clearInterval(latencyTimer);
+    transport?.close();
+  });
 
-  if (mode === 'host') {
+  if (mode === 'host' || mode === 'server') {
+    transport = local
+      ? new BroadcastTransport(room, 'lan-host')
+      : new WebSocketTransport('lan-host', room, { name });
     const host = new HostSession(world, transport, name);
     const view = new NetView(layers, { playersOnly: true, excludeNetId: 0 });
     host.onSnapshot((snapshot) => view.apply(snapshot));
-    host.onJoin((count) => setStatus(`LAN 房主 · ${room} · ${count}P`));
-    await host.start(addr ?? undefined);
-    setStatus(`LAN 房主 · ${room} · 1P`);
-    (window as unknown as Record<string, unknown>).__PF_NET__ = { host, transport };
+    host.onJoin((count) => setStatus(`${count}P`));
+    transport.onClose(() => setStatus('连接已断开'));
+    await host.start(wsUrl ?? undefined);
+    setStatus('1P');
+    transport.sendControl({
+      type: 'meta',
+      meta: { biome: world.biomeId, wave: world.wave, mode: 'coop' },
+    });
+    const metaTimer = window.setInterval(() => {
+      transport?.sendControl({
+        type: 'meta',
+        meta: { biome: world.biomeId, wave: world.wave, mode: 'coop' },
+      });
+    }, 2000);
+    window.addEventListener('beforeunload', () => window.clearInterval(metaTimer));
+    pollLatency();
+    (window as unknown as Record<string, unknown>).__PF_NET__ = { host, transport, serverUrl };
+    refreshChip();
     return {
       active: true,
       isClient: false,
       room,
+      serverUrl,
       get status() {
         return status;
+      },
+      get latency() {
+        return latency;
       },
       update(dt: number) {
         host.update(dt);
@@ -71,22 +128,64 @@ export async function setupNet(
     };
   }
 
-  const client = new ClientSession(world, transport, name, room);
+  let client: ClientSession | null = null;
   let view: NetView | null = null;
-  client.onStatus(setStatus);
-  client.onSnapshot((snapshot) => {
-    if (!view) view = new NetView(layers, { excludeNetId: client.netId });
-    view.apply(snapshot);
-  });
-  await client.start(addr ?? undefined);
-  (window as unknown as Record<string, unknown>).__PF_NET__ = { client, transport };
+  let attempt = 0;
+  let reconnectTimer = 0;
+
+  const connect = async (): Promise<void> => {
+    if (disposed) return;
+    transport = local
+      ? new BroadcastTransport(room, 'lan-client')
+      : new WebSocketTransport('lan-client', room, { name });
+    const session = new ClientSession(world, transport, name, room);
+    client = session;
+    view = null;
+    session.onStatus(setStatus);
+    session.onSnapshot((snapshot) => {
+      attempt = 0;
+      if (!view) view = new NetView(layers, { excludeNetId: session.netId });
+      view.apply(snapshot);
+      refreshChip();
+    });
+    transport.onClose(() => scheduleReconnect('连接断开'));
+    try {
+      await session.start(wsUrl ?? undefined);
+      setStatus('已连接，等待主机分配角色…');
+    } catch {
+      scheduleReconnect('连接失败');
+    }
+    pollLatency();
+  };
+
+  const scheduleReconnect = (reason: string): void => {
+    if (disposed) return;
+    if (attempt >= 3) {
+      setStatus(`${reason} · 重连失败，请返回大厅`);
+      return;
+    }
+    attempt += 1;
+    setStatus(`${reason} · 重连 ${attempt}/3`);
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = window.setTimeout(() => void connect(), 1000 * attempt);
+  };
+
+  await connect();
+  (window as unknown as Record<string, unknown>).__PF_NET__ = { get client() {
+    return client;
+  }, transport, serverUrl };
+  refreshChip();
 
   return {
     active: true,
     isClient: true,
     room,
+    serverUrl,
     get status() {
       return status;
+    },
+    get latency() {
+      return latency;
     },
     update(dt: number) {
       world.elapsed += dt;
@@ -104,7 +203,7 @@ export async function setupNet(
           if (request >= 0 && request <= 2) player.activeSlot = request as 0 | 1 | 2;
         }
       }
-      client.update(dt, {
+      client?.update(dt, {
         move: world.input.move,
         aim: world.input.aimWorld,
         fire: world.input.fireHeld,

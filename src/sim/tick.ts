@@ -1,6 +1,7 @@
 import type { GameWorld } from './world';
 import { aimSystem } from './systems/aim';
 import { areaSystem } from './systems/areas';
+import { biomeSystem } from './systems/biomes';
 import { castingSystem } from './systems/casting';
 import { enemySystem } from './systems/enemies';
 import { facingSystem, movementSystem } from './systems/movement';
@@ -26,6 +27,7 @@ export function tickWorld(world: GameWorld, dt: number): void {
   projectileSystem(world, dt);
   areaSystem(world, dt);
   statusSystem(world, dt);
+  biomeSystem(world, dt);
   pickupSystem(world, dt);
   spawnerSystem(world, dt);
   world.timers.update(dt);

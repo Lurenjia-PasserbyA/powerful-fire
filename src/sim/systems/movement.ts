@@ -21,10 +21,12 @@ export function movementSystem(world: GameWorld, dt: number): void {
     transform.prevY = transform.y;
     transform.prevAngle = transform.angle;
 
+    const player = world.players.get(id);
+    const slow = player ? player.envSlow : 1;
     let next = clampToBounds(
       {
-        x: transform.x + (velocity.x + (knockback?.x ?? 0)) * dt,
-        y: transform.y + (velocity.y + (knockback?.y ?? 0)) * dt,
+        x: transform.x + (velocity.x * slow + (knockback?.x ?? 0)) * dt,
+        y: transform.y + (velocity.y * slow + (knockback?.y ?? 0)) * dt,
       },
       movement.radius,
       bounds.x,

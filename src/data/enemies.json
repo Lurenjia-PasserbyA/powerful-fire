@@ -11,6 +11,66 @@
     "xp": 12,
     "knockbackResist": 0.3
   },
+  "emberling": {
+    "name": "余烬虫",
+    "hp": 28,
+    "speed": 152,
+    "radius": 13,
+    "damage": 8,
+    "attackRange": 40,
+    "windup": 0.32,
+    "attackCooldown": 0.9,
+    "xp": 8,
+    "knockbackResist": 0.15
+  },
+  "thornhusk": {
+    "name": "焦棘壳",
+    "hp": 120,
+    "speed": 72,
+    "radius": 24,
+    "damage": 18,
+    "attackRange": 58,
+    "windup": 0.7,
+    "attackCooldown": 1.5,
+    "xp": 24,
+    "knockbackResist": 0.55
+  },
+  "cinderling": {
+    "name": "烬火幼体",
+    "hp": 38,
+    "speed": 164,
+    "radius": 14,
+    "damage": 10,
+    "attackRange": 44,
+    "windup": 0.35,
+    "attackCooldown": 0.95,
+    "xp": 14,
+    "knockbackResist": 0.2
+  },
+  "magmaw": {
+    "name": "熔岩巨口",
+    "hp": 150,
+    "speed": 84,
+    "radius": 26,
+    "damage": 24,
+    "attackRange": 64,
+    "windup": 0.8,
+    "attackCooldown": 1.8,
+    "xp": 30,
+    "knockbackResist": 0.6
+  },
+  "lavaback": {
+    "name": "岩浆背兽",
+    "hp": 220,
+    "speed": 58,
+    "radius": 31,
+    "damage": 30,
+    "attackRange": 72,
+    "windup": 0.95,
+    "attackCooldown": 2.1,
+    "xp": 42,
+    "knockbackResist": 0.78
+  },
   "ashlord": {
     "name": "灰烬领主",
     "hp": 900,

@@ -1,8 +1,15 @@
-# Powerful Fire — M1 至 M8（战斗 / 商店 / 基地 / 音频 / 存档 / 联机 / 收尾）
+# Powerful Fire — v1.0（正式服务器 / 三生物群系 / 触控重写 / 四端应用）
 
-> 按《Powerful Fire —— AI 开发提示词文档》第 16 节里程碑推进。
-> M1 骨架、M2 战斗、M3 商店/装配/冷却、M4 安全基地 + 体力、M5 音频、M6 存档之上，本次交付 **M7 局域网联机 + M8 Boss / 性能 / 平衡收尾**。
-> 验收对照：出基地即被追击、回基地仇恨清零且不掉血、商店/升级台闭环、体力见底禁闪避与技能失败提示、双端位置/技能/伤害一致、120 敌 + 400 投射物逻辑 <4ms / 渲染 <8ms。
+> 2D 俯视角火系动作 RPG，TypeScript strict + Pixi.js v8 + Vite。
+> M1–M8 已全部交付；v1.0 在 M8 基础上补齐 **正式服务端与部署、联机大厅多连接方式、三个生物群系、移动端触控重写、Windows/Linux/macOS/Android 应用包**。
+
+## v1.0 新增
+
+- **正式服务器**：`server/` 提供静态托管、`/health`、`/api/config`、`/api/rooms`、`/api/servers`、`/api/stats` 与 `/ws` 房间协议 v2；房间码 2–8 位、容量 1+3、64KB 限包、240 msg/s 限流、20s 心跳、房主断线 10s 宽限、客机 45s 重连令牌、空房 15min 回收。含 Dockerfile / compose / systemd / Nginx TLS 文档。
+- **多连接方式**：HUD「⇄」联机大厅提供「本机 BroadcastChannel / 直连地址 / 服务器发现」三 Tab，可探测延迟、浏览公开房间、复用最近服务器、复制邀请链接；URL 参数 `net=host|join|client|server` 向后兼容。
+- **三生物群系**：灰烬荒原（ember）、焦木林（grove，雾区减速 0.62）、熔岩裂谷（rift，岩浆圈 9 DPS）；区域标题、危害圈、群系色块、跨群系提示与对应敌人池（emberling / thornhusk / cinderling / magmaw / lavaback）。
+- **触控重写**：左半屏浮动摇杆、右半屏拖动瞄准并开火、自动开火开关、大号闪避/大招、体力条、槽位按钮、震动反馈、竖屏提示；自动开火时 20° 锥形辅助瞄准最近敌人。
+- **应用包**：Electron 桌面壳内置随机端口 HTTP 托管 `dist/`，产出 Windows x64、Linux x64、macOS x64/arm64 zip；Capacitor Android 工程产出 debug APK。
 
 ## 运行
 
@@ -12,12 +19,22 @@ pnpm install
 pnpm dev            # http://localhost:5173
 pnpm build          # tsc --noEmit + vite build
 pnpm preview        # 预览生产构建
-pnpm net            # 局域网中继 ws://0.0.0.0:8787（可选）
+pnpm server         # 正式服务器：静态托管 dist + 房间 API + WS（默认 8787）
+pnpm test:server    # node --test 服务端房间测试
+pnpm pack:desktop   # Windows/Linux/macOS zip → dist-app/
+pnpm android:sync   # 同步 dist 到 Capacitor Android
+pnpm android:apk    # Gradle assembleDebug → android/app/build/outputs/apk/debug/
 ```
 
-联机：房主打开 `?net=host&room=ABCD`，队友打开 `?net=join&room=ABCD`（留空中继地址走同浏览器 BroadcastChannel；填写 `addr=ws://<主机IP>:8787` 走局域网中继）。也可点 HUD 右侧「⇄」打开联机大厅。
+联机：房主打开 `?net=host&room=ABCD&addr=http://<主机IP>:8787`，队友打开 `?net=join&room=ABCD&addr=http://<主机IP>:8787`；不填 `addr` 则走同浏览器 BroadcastChannel。也可点 HUD 右侧「⇄」，在「本机 / 直连 / 服务器」三个 Tab 中创建或加入房间。
 
 触屏：浏览器打开 `?touch=1` 可强制启用虚拟摇杆（移动端 coarse pointer 会自动启用）。
+
+### 打包环境
+
+- 桌面：`pnpm build && pnpm pack:desktop`，产物在 `dist-app/`（Windows/Linux `.zip`，macOS `.app` 的 `.zip`）。macOS 包未做 Apple 公证，首次运行按 `desktop/README.txt` 处理隔离属性。
+- Android：需要 **JDK 21**、Android SDK Platform 36、Build-Tools 36.0.0，设置 `ANDROID_HOME` 并在 `android/local.properties` 写 `sdk.dir`；`pnpm build && pnpm android:sync && pnpm android:apk`。
+- 服务端：`pnpm server`；容器部署见 `docs/SERVER.md`。
 
 ## 操作
 

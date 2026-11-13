@@ -1,4 +1,5 @@
 import { enemyData } from '../../data/enemies';
+import { biomeAtSafe, biomeDef } from '../../data/biomes';
 import type { EntityId } from '../../types';
 import { spawnEnemy } from '../spawn';
 import type { GameWorld } from '../world';
@@ -43,7 +44,10 @@ export function spawnerSystem(world: GameWorld, dt: number): void {
       const y = Math.min(world.bounds.y - 40, Math.max(40, playerTransform.y + Math.sin(angle) * distance));
       // 不生成在基地内（含 90 单位安全外沿）
       if (isInBase(world, { x, y }, 90)) continue;
-      spawnEnemy(world, 'ashwalker', x, y);
+      const biome = biomeDef(biomeAtSafe({ x, y }));
+      const pool = biome.enemyPool;
+      const type = pool[world.rng.int(0, pool.length)] ?? 'ashwalker';
+      spawnEnemy(world, type, x, y);
     }
   }
 

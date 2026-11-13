@@ -4,6 +4,8 @@ export interface TouchOptions {
   host: HTMLElement;
   mapPointer: (clientX: number, clientY: number) => Vec2;
   onShop: () => void;
+  /** 自动瞄准：返回世界坐标中的最近敌人；没有目标返回 null。 */
+  autoAim?: () => Vec2 | null;
 }
 
 export interface TouchController {
@@ -11,6 +13,7 @@ export interface TouchController {
     move: Vec2;
     aim: Vec2 | null;
     fireHeld: boolean;
+    autoFire: boolean;
     dodgePressed: boolean;
     ultPressed: boolean;
     slotRequest: number | null;
@@ -18,21 +21,36 @@ export interface TouchController {
   setActive(active: boolean): void;
   setSlots(names: string[], active: number): void;
   setUltimate(name: string | null, charge: number): void;
+  setStamina(ratio: number, low: boolean): void;
   consume(): { dodge: boolean; ult: boolean };
 }
 
-const STICK_RADIUS = 46;
+const STICK_RADIUS = 58;
 
-/** 触屏：左虚拟摇杆移动，右半屏拖动瞄准并持续开火，右下角闪避/大招/商店与槽位切换。 */
+function buzz(ms = 12): void {
+  try {
+    navigator.vibrate?.(ms);
+  } catch {
+    /* 不支持震动时忽略 */
+  }
+}
+
+/**
+ * 触屏：左半屏任意位置按下滑出浮动摇杆；右半屏拖动瞄准并开火；
+ * 右下角大号闪避/大招、下方槽位、体力条与自动开火开关。
+ */
 export function createTouch(options: TouchOptions): TouchController {
   const { host } = options;
   host.innerHTML = '';
 
+  const moveZone = document.createElement('div');
+  moveZone.className = 'touch__move-zone';
   const stick = document.createElement('div');
   stick.className = 'touch__stick';
   const knob = document.createElement('div');
   knob.className = 'touch__knob';
   stick.appendChild(knob);
+  moveZone.appendChild(stick);
 
   const aimPad = document.createElement('div');
   aimPad.className = 'touch__aim';
@@ -47,24 +65,46 @@ export function createTouch(options: TouchOptions): TouchController {
   for (const [key, label] of [
     ['dodge', '闪避'],
     ['ult', '大招'],
-    ['shop', '商店'],
   ] as const) {
     const button = document.createElement('button');
-    button.className = 'touch__btn';
+    button.type = 'button';
+    button.className = `touch__btn touch__btn--${key}`;
     button.textContent = label;
     actions.appendChild(button);
     buttons[key] = button;
   }
 
+  const autoButton = document.createElement('button');
+  autoButton.type = 'button';
+  autoButton.className = 'touch__auto';
+  autoButton.textContent = '自动开火 关';
+  autoButton.setAttribute('aria-pressed', 'false');
+
+  const shopButton = document.createElement('button');
+  shopButton.type = 'button';
+  shopButton.className = 'touch__shop';
+  shopButton.textContent = '商店';
+
+  const stamina = document.createElement('div');
+  stamina.className = 'touch__stamina';
+  const staminaFill = document.createElement('div');
+  staminaFill.className = 'touch__stamina-fill';
+  stamina.appendChild(staminaFill);
+
   const slots = document.createElement('div');
   slots.className = 'touch__slots';
 
-  host.append(stick, aimPad, actions, slots);
+  const rotate = document.createElement('div');
+  rotate.className = 'touch__rotate';
+  rotate.textContent = '横屏游玩体验更佳';
+
+  host.append(moveZone, aimPad, actions, autoButton, shopButton, stamina, slots, rotate);
 
   const state = {
     move: { x: 0, y: 0 },
     aim: null as Vec2 | null,
     fireHeld: false,
+    autoFire: false,
     dodgePressed: false,
     ultPressed: false,
     slotRequest: null as number | null,
@@ -72,48 +112,66 @@ export function createTouch(options: TouchOptions): TouchController {
 
   let stickPointer: number | null = null;
   let aimPointer: number | null = null;
+  let stickX = 0;
+  let stickY = 0;
 
-  stick.addEventListener('pointerdown', (event) => {
+  const resetStick = (): void => {
+    state.move.x = 0;
+    state.move.y = 0;
+    knob.style.transform = 'translate(0px, 0px)';
+    stick.classList.remove('is-active');
+  };
+
+  const updateStick = (event: PointerEvent): void => {
+    const dx = event.clientX - stickX;
+    const dy = event.clientY - stickY;
+    const distance = Math.hypot(dx, dy);
+    if (distance > 0.001) {
+      const strength = Math.min(1, distance / STICK_RADIUS);
+      state.move = { x: (dx / distance) * strength, y: (dy / distance) * strength };
+    }
+    const clamped = Math.min(distance, STICK_RADIUS);
+    const angle = Math.atan2(dy, dx);
+    knob.style.transform = `translate(${Math.cos(angle) * clamped}px, ${Math.sin(angle) * clamped}px)`;
+  };
+
+  const beginStick = (event: PointerEvent): void => {
+    if (stickPointer !== null) return;
     stickPointer = event.pointerId;
+    stickX = event.clientX;
+    stickY = event.clientY;
+    const rect = moveZone.getBoundingClientRect();
+    stick.style.left = `${event.clientX - rect.left}px`;
+    stick.style.top = `${event.clientY - rect.top}px`;
+    stick.classList.add('is-active');
     try {
-      stick.setPointerCapture(event.pointerId);
+      moveZone.setPointerCapture(event.pointerId);
     } catch {
-      /* 合成事件无捕获能力时忽略 */
+      /* 合成事件无捕获能力 */
     }
     updateStick(event);
-  });
-  stick.addEventListener('pointermove', (event) => {
+  };
+
+  moveZone.addEventListener('pointerdown', beginStick);
+  moveZone.addEventListener('pointermove', (event) => {
     if (stickPointer !== event.pointerId) return;
     updateStick(event);
   });
   const endStick = (event: PointerEvent): void => {
     if (stickPointer !== event.pointerId) return;
     stickPointer = null;
-    state.move.x = 0;
-    state.move.y = 0;
-    knob.style.transform = 'translate(0px, 0px)';
+    resetStick();
   };
-  stick.addEventListener('pointerup', endStick);
-  stick.addEventListener('pointercancel', endStick);
-  stick.addEventListener('pointerleave', endStick);
-
-  function updateStick(event: PointerEvent): void {
-    const rect = stick.getBoundingClientRect();
-    const dx = event.clientX - (rect.left + rect.width / 2);
-    const dy = event.clientY - (rect.top + rect.height / 2);
-    const distance = Math.hypot(dx, dy);
-    if (distance > 0.001) state.move = { x: dx / distance, y: dy / distance };
-    const clamped = Math.min(distance, STICK_RADIUS);
-    const angle = Math.atan2(dy, dx);
-    knob.style.transform = `translate(${Math.cos(angle) * clamped}px, ${Math.sin(angle) * clamped}px)`;
-  }
+  moveZone.addEventListener('pointerup', endStick);
+  moveZone.addEventListener('pointercancel', endStick);
 
   aimPad.addEventListener('pointerdown', (event) => {
+    if (aimPointer !== null) return;
     aimPointer = event.pointerId;
     try {
       aimPad.setPointerCapture(event.pointerId);
     } catch {
-      /* 合成事件无捕获能力时忽略 */
+      /* 忽略 */
     }
     state.aim = options.mapPointer(event.clientX, event.clientY);
     state.fireHeld = true;
@@ -131,30 +189,50 @@ export function createTouch(options: TouchOptions): TouchController {
   aimPad.addEventListener('pointerup', endAim);
   aimPad.addEventListener('pointercancel', endAim);
 
-  buttons.dodge?.addEventListener('click', () => {
+  const bindTap = (button: HTMLButtonElement, action: () => void): void => {
+    button.addEventListener('pointerdown', (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      button.classList.add('is-pressed');
+      action();
+      buzz();
+    });
+    button.addEventListener('pointerup', () => button.classList.remove('is-pressed'));
+    button.addEventListener('pointercancel', () => button.classList.remove('is-pressed'));
+    button.addEventListener('click', (event) => event.preventDefault());
+  };
+
+  bindTap(buttons.dodge as HTMLButtonElement, () => {
     state.dodgePressed = true;
   });
-  buttons.ult?.addEventListener('click', () => {
+  bindTap(buttons.ult as HTMLButtonElement, () => {
     state.ultPressed = true;
   });
-  buttons.shop?.addEventListener('click', () => options.onShop());
+  bindTap(shopButton, () => options.onShop());
+  autoButton.addEventListener('pointerdown', (event) => {
+    event.stopPropagation();
+    state.autoFire = !state.autoFire;
+    autoButton.textContent = `自动开火 ${state.autoFire ? '开' : '关'}`;
+    autoButton.classList.toggle('is-on', state.autoFire);
+    autoButton.setAttribute('aria-pressed', state.autoFire ? 'true' : 'false');
+    buzz(8);
+  });
 
   const slotButtons: HTMLButtonElement[] = [];
   for (let i = 0; i < 3; i += 1) {
     const button = document.createElement('button');
+    button.type = 'button';
     button.className = 'touch__slot';
     button.textContent = `槽 ${i + 1}`;
     button.dataset.slot = String(i);
     slots.appendChild(button);
     slotButtons.push(button);
+    button.addEventListener('pointerdown', (event) => {
+      event.stopPropagation();
+      state.slotRequest = i;
+      buzz(6);
+    });
   }
-  slots.addEventListener('click', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
-    const slot = target.dataset.slot;
-    if (slot === undefined) return;
-    state.slotRequest = Number(slot);
-  });
 
   return {
     state,
@@ -166,7 +244,9 @@ export function createTouch(options: TouchOptions): TouchController {
         state.move.y = 0;
         state.fireHeld = false;
         state.aim = null;
-        knob.style.transform = 'translate(0px, 0px)';
+        stickPointer = null;
+        aimPointer = null;
+        resetStick();
       }
     },
     setSlots(names: string[], active: number): void {
@@ -178,9 +258,17 @@ export function createTouch(options: TouchOptions): TouchController {
       }
     },
     setUltimate(name: string | null, charge: number): void {
-      const label = name ? `大招 ${Math.round(Math.min(1, charge) * 100)}%` : '大招';
-      if (buttons.ult) buttons.ult.textContent = label;
-      buttons.ult?.classList.toggle('is-fire', charge >= 1 && Boolean(name));
+      const ratio = Math.min(1, Math.max(0, charge));
+      const label = name ? `大招 ${Math.round(ratio * 100)}%` : '大招';
+      if (buttons.ult) {
+        buttons.ult.textContent = label;
+        buttons.ult.style.setProperty('--charge', `${(ratio * 100).toFixed(0)}%`);
+        buttons.ult.classList.toggle('is-fire', ratio >= 1 && Boolean(name));
+      }
+    },
+    setStamina(ratio: number, low: boolean): void {
+      staminaFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
+      stamina.classList.toggle('is-low', low);
     },
     consume(): { dodge: boolean; ult: boolean } {
       const result = { dodge: state.dodgePressed, ult: state.ultPressed };
@@ -190,4 +278,3 @@ export function createTouch(options: TouchOptions): TouchController {
     },
   };
 }
-

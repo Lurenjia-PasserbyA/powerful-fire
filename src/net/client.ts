@@ -20,6 +20,8 @@ export class ClientSession {
   hostName = 'Host';
   connected = false;
   snapshotCount = 0;
+  latency: number | null = null;
+  roomState: { code: string; players: number; capacity: number; biome: string; wave: number } | null = null;
   private seq = 0;
   private pendingDodge = false;
   private pendingUlt = false;
@@ -57,6 +59,7 @@ export class ClientSession {
       this.netId = msg.netId;
       this.entityId = msg.entityId;
       this.hostName = msg.hostName;
+      this.connected = true;
       this.statusHandler?.(`已加入 · 队友 ${msg.netId}`);
       return;
     }
@@ -65,6 +68,24 @@ export class ClientSession {
       this.latest = msg.snapshot;
       this.applySnapshot(msg.snapshot);
       this.snapshotHandler?.(msg.snapshot);
+      return;
+    }
+    if (msg.type === 'register-error') {
+      this.connected = false;
+      const reason =
+        msg.code === 'room-full'
+          ? '房间已满（最多 4 人）'
+          : msg.code === 'protocol-mismatch'
+            ? '服务器协议版本不匹配'
+            : msg.code === 'bad-room'
+              ? '房间码不合法'
+              : `加入失败：${msg.code}`;
+      this.statusHandler?.(reason);
+      this.transport.close();
+      return;
+    }
+    if (msg.type === 'room-state') {
+      this.roomState = msg.room;
       return;
     }
     if (msg.type === 'host-left') {

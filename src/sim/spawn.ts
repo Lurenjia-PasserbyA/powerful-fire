@@ -88,6 +88,8 @@ function createPlayerEntity(
     damageMult: 1,
     noticeCooldown: 0,
     remote,
+    biome: 'ember',
+    envSlow: 1,
   };
   const aim: Aim = { x: spawnPos.x + 1, y: spawnPos.y };
 

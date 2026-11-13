@@ -89,13 +89,21 @@ export type NetMessage =
   | { type: 'leave' }
   | { type: 'ping'; at: number }
   | { type: 'pong'; at: number }
-  | { type: 'register-ok'; role: string; id?: string }
-  | { type: 'host-left' };
+  | { type: 'register-ok'; role: string; id?: string; token?: string; room?: string }
+  | { type: 'register-error'; code: string; protocol?: number }
+  | { type: 'server-info'; protocol: number; version: string; maxPlayers: number; heartbeatMs: number }
+  | { type: 'room-state'; room: { code: string; players: number; capacity: number; biome: string; wave: number } }
+  | { type: 'host-left' }
+  | { type: 'host-resumed' };
 
 export interface Transport {
   readonly mode: NetMode;
   connect(addr?: string): Promise<void>;
   send(msg: NetMessage, to?: string): void;
+  /** 发送不经过房间转发的服务器控制消息（如 meta / ping）。 */
+  sendControl(msg: Record<string, unknown>): void;
+  ping(): Promise<number | null>;
   onMessage(cb: (msg: NetMessage, from: string) => void): void;
+  onClose(cb: () => void): void;
   close(): void;
 }

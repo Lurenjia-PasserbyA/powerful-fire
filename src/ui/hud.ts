@@ -17,6 +17,7 @@ export interface HudSnapshot {
   ultimate: { name: string; charge: number } | null;
   kills: number;
   wave: number;
+  biomeName: string;
   stamina: number;
   staminaMax: number;
   inBase: boolean;
@@ -152,7 +153,7 @@ export function createHud(root: HTMLElement): Hud {
       const top = ((s.y / s.worldHeight) * 100).toFixed(2);
       mapPlayer.style.left = `${left}%`;
       mapPlayer.style.top = `${top}%`;
-      waveLabel.textContent = `WAVE ${s.wave} · KILL ${s.kills}`;
+      waveLabel.textContent = `WAVE ${s.wave} · ${s.biomeName} · KILL ${s.kills}`;
 
       const hpRatio = s.maxHp > 0 ? Math.max(0, Math.min(1, s.hp / s.maxHp)) : 0;
       hpFill.style.width = `${(hpRatio * 100).toFixed(1)}%`;

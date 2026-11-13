@@ -4,6 +4,7 @@ import type { GameWorld } from '../sim/world';
 import type { DebugHandle } from './debug';
 import type { AudioBus } from '../audio/audiobus';
 import type { SaveManager } from '../save/manager';
+import type { TouchController } from '../ui/touch';
 
 declare global {
   interface Window {
@@ -17,7 +18,8 @@ declare global {
       shop: { open(): void; close(): void; toggle(): void; isOpen(): boolean };
       audio: AudioBus;
       save: SaveManager;
-  net?: unknown;
+      net?: unknown;
+      touch: TouchController;
       camp: {
         openUpgrade(): void;
         closeUpgrade(): void;

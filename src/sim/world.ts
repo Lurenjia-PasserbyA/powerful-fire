@@ -4,6 +4,7 @@ import { Pool } from '../core/pool';
 import { createRng, type Rng } from '../core/rng';
 import { FrameTimers } from '../core/timer';
 import { config, type GameConfig } from '../data/config';
+import { biomeDef, type BiomeId } from '../data/biomes';
 import type { SkillDef } from '../skills/registry';
 import type { EntityId, Vec2 } from '../types';
 import type {
@@ -33,6 +34,7 @@ export interface GameEvents extends Record<string, unknown> {
   'player:hurt': { amount: number };
   'boss:phase': { phase: number; x: number; y: number };
   'boss:defeated': { name: string; x: number; y: number };
+  'biome:enter': { id: BiomeId; name: string };
 }
 
 export interface RemoteInput {
@@ -90,6 +92,11 @@ export interface GameWorld {
   spawnTimer: number;
   wave: number;
   elapsed: number;
+  /** 本地玩家所在群系（HUD / 联机 meta / 刷怪池）。 */
+  biomeId: BiomeId;
+  biomeName: string;
+  /** 环境伤害结算节流（0.5s 一跳，避免每帧刷伤害数字）。 */
+  hazardTimer: number;
   /** 本地玩家（HUD / 镜头 / 商店作用对象）。 */
   playerId: EntityId | null;
   /** 参与模拟的全部玩家：本地 + 联机队友。 */
@@ -240,6 +247,9 @@ export function createGameWorld(options: {
     spawnTimer: cfg.spawner.interval,
     wave: 0,
     elapsed: 0,
+    biomeId: 'ember',
+    biomeName: biomeDef('ember').name,
+    hazardTimer: 0,
     playerId: null,
     playerIds: [],
     remoteInputs: new Map(),

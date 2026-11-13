@@ -1,22 +1,35 @@
 {
   "name": "powerful-fire",
+  "main": "desktop/main.cjs",
   "private": true,
-  "version": "0.8.0",
+  "version": "1.0.0",
   "type": "module",
-  "description": "M1-M8: combat, shop, base, stamina, audio, save, LAN co-op, boss and performance",
+  "description": "Powerful Fire v1.0 — 2D top-down fire action RPG with server lobby, biomes, touch controls and multi-platform packages.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
     "typecheck": "tsc --noEmit",
-    "net": "node server/index.mjs"
+    "net": "node server/index.mjs",
+    "server": "node server/index.mjs",
+    "test:server": "node --test server/test/*.test.mjs",
+    "desktop": "electron .",
+    "pack:desktop": "node desktop/build.mjs",
+    "android:sync": "cap sync android",
+    "android:apk": "cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
-    "pixi.js": "^8.23.0"
+    "@capacitor/core": "^8.6.0",
+    "pixi.js": "^8.23.0",
+    "ws": "^8.22.2"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
+    "@electron/packager": "^20.3.0",
+    "electron": "^45.3.1",
+    "electron-builder": "^26.18.0",
     "typescript": "^5.9.3",
-    "vite": "^8.3.8",
-    "ws": "^8.22.2"
+    "vite": "^8.3.8"
   }
 }

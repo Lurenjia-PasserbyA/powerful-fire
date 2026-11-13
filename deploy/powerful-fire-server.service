@@ -1,0 +1,24 @@
+[Unit]
+Description=Powerful Fire game server
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pf
+Group=pf
+WorkingDirectory=/opt/powerful-fire
+Environment=NODE_ENV=production
+Environment=PF_PORT=8787
+Environment=PF_REGION=local
+ExecStart=/usr/bin/node server/index.mjs
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/powerful-fire
+
+[Install]
+WantedBy=multi-user.target

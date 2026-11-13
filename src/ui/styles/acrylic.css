@@ -1447,3 +1447,206 @@ body {
 .hud-boss__name { color: #ffb37a; font: 700 12px/1.4 Inter, sans-serif; letter-spacing: 0.12em; }
 .hud-boss__track { height: 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); overflow: hidden; }
 .hud-boss__fill { display: block; height: 100%; width: 100%; background: #ff5c3d; transition: width 120ms var(--ease-out-cubic); }
+
+/* ===== v1.0 触控增强 ===== */
+.touch__move-zone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 46%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch__stick {
+  position: absolute;
+  width: 132px;
+  height: 132px;
+  margin: -66px 0 0 -66px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.16), rgba(18, 16, 22, 0.34));
+  border: 1px solid rgba(255, 179, 71, 0.38);
+  opacity: 0;
+  transform: scale(0.86);
+  transition: opacity 120ms var(--ease-out-cubic), transform 120ms var(--ease-out-back);
+  pointer-events: none;
+}
+.touch__stick.is-active { opacity: 1; transform: scale(1); }
+
+.touch__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 209, 143, 0.55), rgba(255, 107, 53, 0.3));
+  border: 1px solid rgba(255, 209, 143, 0.7);
+  box-shadow: 0 0 18px rgba(255, 107, 53, 0.25);
+}
+
+.touch__actions {
+  right: calc(18px + env(safe-area-inset-right));
+  bottom: calc(26px + env(safe-area-inset-bottom));
+  gap: 14px;
+}
+
+.touch__btn {
+  width: 76px;
+  height: 76px;
+  font-size: 12px;
+  backdrop-filter: blur(4px);
+  transition: transform 90ms var(--ease-out-back), border-color 120ms linear;
+}
+.touch__btn.is-pressed { transform: scale(0.92); border-color: var(--accent-fire); }
+.touch__btn--ult {
+  width: 92px;
+  height: 92px;
+  font-size: 13px;
+  background:
+    conic-gradient(rgba(255, 138, 61, 0.34) var(--charge, 0%), rgba(18, 16, 22, 0.52) 0),
+    rgba(18, 16, 22, 0.5);
+}
+
+.touch__auto,
+.touch__shop {
+  position: absolute;
+  right: calc(18px + env(safe-area-inset-right));
+  padding: 8px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(18, 16, 22, 0.55);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  pointer-events: auto;
+  touch-action: none;
+}
+.touch__auto { bottom: calc(224px + env(safe-area-inset-bottom)); }
+.touch__auto.is-on { color: var(--accent-soft); border-color: rgba(255, 179, 71, 0.6); background: rgba(255, 107, 53, 0.16); }
+.touch__shop { top: calc(18px + env(safe-area-inset-top)); }
+
+.touch__stamina {
+  position: absolute;
+  left: 50%;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  width: 190px;
+  height: 5px;
+  margin-left: -95px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  pointer-events: none;
+}
+.touch__stamina-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ffd166, #ffb703);
+  transition: width 120ms linear, background 180ms linear;
+}
+.touch__stamina.is-low .touch__stamina-fill { background: linear-gradient(90deg, #ff6b35, #e63946); }
+
+.touch__slots {
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  gap: 10px;
+}
+.touch__slot {
+  width: 62px;
+  height: 38px;
+  font-size: 10px;
+  pointer-events: auto;
+  touch-action: none;
+}
+.touch__slot.is-active { background: rgba(255, 107, 53, 0.16); }
+
+.touch__rotate {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: calc(14px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: rgba(18, 16, 22, 0.55);
+  color: rgba(245, 239, 233, 0.5);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+@media (orientation: portrait) {
+  .touch.is-on .touch__rotate { display: block; }
+}
+
+/* ===== v1.0 联机大厅 ===== */
+.net-panel {
+  width: 286px;
+  max-height: 72vh;
+  overflow-y: auto;
+  top: 238px;
+  right: calc(24px + env(safe-area-inset-right));
+}
+
+.net-panel__tabs {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 10px;
+  padding: 3px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.net-panel__tab {
+  flex: 1;
+  padding: 6px 4px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.net-panel__tab.is-active {
+  background: rgba(255, 107, 53, 0.2);
+  color: var(--accent-soft);
+}
+
+.net-panel__mini { flex: 0 0 auto; padding: 5px 8px; font-size: 10px; }
+
+.net-panel__servers {
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
+}
+.net-panel__server-list,
+.net-panel__room-list { display: grid; gap: 6px; margin-top: 8px; }
+
+.net-panel__server,
+.net-panel__room {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(9, 8, 11, 0.55);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.net-panel__server.is-selected,
+.net-panel__server:hover,
+.net-panel__room:hover { border-color: rgba(255, 179, 71, 0.55); background: rgba(255, 107, 53, 0.1); }
+.net-panel__server-name { font-size: 11px; color: var(--accent-soft); }
+.net-panel__server-meta,
+.net-panel__room-meta { font-size: 9px; color: var(--text-dim); letter-spacing: 0.03em; }
+.net-panel__room span:first-child { font-size: 12px; letter-spacing: 0.14em; color: var(--accent-soft); }
+.net-panel__section { margin: 10px 0 2px; font-size: 9px; letter-spacing: 0.1em; color: var(--text-dim); }
+.touch__aim-hint { display: none; }
+.touch__actions .touch__btn { touch-action: none; }

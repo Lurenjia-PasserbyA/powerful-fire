@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-app
+release
+android/.gradle
+android/app/build
+android/build
+.git
+*.zip
+*.log
