@@ -9,6 +9,7 @@
 - **多连接方式**：HUD「⇄」联机大厅提供「本机 BroadcastChannel / 直连地址 / 服务器发现」三 Tab，可探测延迟、浏览公开房间、复用最近服务器、复制邀请链接；URL 参数 `net=host|join|client|server` 向后兼容。
 - **三生物群系**：灰烬荒原（ember）、焦木林（grove，雾区减速 0.62）、熔岩裂谷（rift，岩浆圈 9 DPS）；区域标题、危害圈、群系色块、跨群系提示与对应敌人池（emberling / thornhusk / cinderling / magmaw / lavaback）。
 - **触控重写**：左半屏浮动摇杆、右半屏拖动瞄准并开火、自动开火开关、大号闪避/大招、体力条、槽位按钮、震动反馈、竖屏提示；自动开火时 20° 锥形辅助瞄准最近敌人。
+- **发布说明**：`docs/RELEASE-v1.0.0.md`（功能、验收记录、已知限制）。
 - **应用包**：Electron 桌面壳内置随机端口 HTTP 托管 `dist/`，产出 Windows x64、Linux x64、macOS x64/arm64 zip；Capacitor Android 工程产出 debug APK。
 
 ## 运行
