@@ -136,6 +136,7 @@ export function createHud(root: HTMLElement): Hud {
     },
     setBoss(boss: { name: string; ratio: number } | null): void {
       bossBar.classList.toggle('is-on', Boolean(boss));
+      root.classList.toggle('has-boss', Boolean(boss));
       if (!boss) return;
       if (bossName) bossName.textContent = boss.name;
       if (bossFill) bossFill.style.width = `${Math.max(0, Math.min(1, boss.ratio)) * 100}%`;

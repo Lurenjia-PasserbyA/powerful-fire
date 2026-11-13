@@ -1,9 +1,9 @@
 {
   "name": "powerful-fire",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
-  "description": "M1-M7: combat, shop, base, stamina, audio, save, LAN co-op",
+  "description": "M1-M8: combat, shop, base, stamina, audio, save, LAN co-op, boss and performance",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

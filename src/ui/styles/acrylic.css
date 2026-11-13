@@ -1009,6 +1009,11 @@ body {
   transform: translate(-50%, 0);
 }
 
+/* Boss 血条占用顶部中央时，提示下移避免遮挡 */
+.hud.has-boss .toast {
+  top: 150px;
+}
+
 .toast.is-warn {
   border-color: rgba(230, 57, 70, 0.6);
   color: #ffb9be;

@@ -20,16 +20,23 @@ export function installDebug(world: GameWorld, playerId: number): DebugHandle {
     spawnBoss: (x, y) => spawnEnemy(world, 'ashlord', x, y),
     stress: (enemies, projectiles) => {
       const center = { x: 1400, y: 1200 };
+      // 压测前清场，保证指标对应「120 敌 + 400 弹」而非累加
+      for (const id of [...world.enemies.keys()]) world.ecs.destroy(id);
+      for (const projectile of world.projectiles) world.pools.projectile.release(projectile);
+      world.projectiles.length = 0;
       for (let i = 0; i < enemies; i += 1) {
         const angle = (i / enemies) * Math.PI * 2;
-        const ring = 180 + (i % 6) * 90;
+        const ring = 520 + (i % 6) * 90;
         spawnEnemy(world, 'ashwalker', center.x + Math.cos(angle) * ring, center.y + Math.sin(angle) * ring);
       }
+      // 投射物放在内圈，避免生成当帧就与敌人碰撞，保证 400 发同时存活
       for (let i = 0; i < projectiles; i += 1) {
         const projectile = world.pools.projectile.acquire();
         if (!projectile) break;
-        projectile.x = center.x + Math.cos(i) * (i % 300);
-        projectile.y = center.y + Math.sin(i) * (i % 300);
+        const angle = (i / Math.max(1, projectiles)) * Math.PI * 2;
+        const ring = 60 + (i % 5) * 30;
+        projectile.x = center.x + Math.cos(angle) * ring;
+        projectile.y = center.y + Math.sin(angle) * ring;
         projectile.vx = 0;
         projectile.vy = 0;
         projectile.kind = 'fireball';

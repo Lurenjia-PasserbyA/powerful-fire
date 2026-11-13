@@ -121,6 +121,16 @@ pnpm net            # 局域网中继 ws://0.0.0.0:8787（可选）
 
 ![LAN 2P](docs/m7-lan-preview.png)
 
+### M8：Boss / 性能 / 平衡收尾
+
+- Boss「灰烬领主」（`enemies.json` → `ashlord`）：HP 900 / 半径 40 / 震地 36 伤害 / 90% 击退抗性 / XP 220；血量 66% 与 33% 两阶段各召唤 4–5 只焦炭行者，攻击变为 190 半径范围震地；HUD 顶部 Boss 血条随阶段更新，击败写入 `progress.defeatedBosses`（存档保留）并触发 `boss:defeated` 音效与提示。
+- 自动登场：波次每 6 波、玩家 ≥ LV3、场上无 Boss 且未击败过时，在玩家 360 距离外生成；`__PF__.debug.spawnBoss(x,y)` 可定点开战。
+- 4 个大招全部可用：`ult_firesky`（跟随火雨）、`ult_baguette`（12 根法棍审判）、`ult_overload`（8s 零冷却）、`ult_rebirth`（满血复活）；均按 tier=ultimate 扣 18 体力、走能量条。
+- 性能：对象池（投射物 400 / XP 光球 / 伤害数字 40 / 区域 96）；`GameLoop.currentStats` 新增 `tickMs` / `renderMs` 平滑值；`__PF__.debug.stress(120,400)` 一键压测。
+- 平衡：Boss 伤害与召唤节奏按 1–2 人设计；玩家死亡保留 20% XP 惩罚 + 基地满血复活；基地内绝对安全、敌人丢失仇恨。
+
+![Boss](docs/m8-boss-preview.png)
+
 ### 渲染
 
 `src/render/enemy-view.ts`、`projectile-view.ts`、`area-view.ts`、`orb-view.ts`、`combat-views.ts`：
@@ -168,6 +178,11 @@ pnpm net            # 局域网中继 ws://0.0.0.0:8787（可选）
 | LAN 双端 | 房主 + 客机（BroadcastChannel）：主机 `playerIds=2`，客机预测位置与主机远端实体同坐标；客机 HUD 等级/HP/槽位来自快照 |
 | LAN 输入→快照 | WebSocket 中继 + 无头客机：远端玩家 240.5→712.5（2.6s，30Hz 输入），2.9s 收到 59 帧快照（≈20Hz） |
 | LAN 伤害/技能 | 客机出基地后被焦炭行者攻击 HP 100→88；客机火球命中敌人，快照敌人 HP 46→0.2、投射物峰值 3；伤害只在主机结算 |
+| Boss 阶段 | 灰烬领主 900 HP：降至 560 触发一阶段（召唤 4，场上 5）、降至 250 触发二阶段（再召唤 5，场上 12）；血条 62.2%→27.8% |
+| Boss 击败 | 伤害管线击杀后 `enemies` 移除、`progress.defeatedBosses=['ashlord']`、Boss 血条隐藏、`boss:defeated` 事件触发 |
+| 四大招 | 依次释放 `ult_firesky / ult_baguette / ult_overload / ult_rebirth`：区域数 1 / 6 / 6 / 5，均无控制台报错 |
+| 性能上限 | 120 敌 + 400 投射物：tick 2.75ms、render 3.70ms、内存 30MB；120 敌 + 25 投射物：tick 0.42ms、render 2.42ms、60fps |
+| 首包 | `dist` JS+CSS 合计 659KB（gzip 208KB），远低于 8MB |
 | 兼容 | WebGPU 初始化失败仅告警并降级 Canvas 2D；`pnpm build`（tsc strict + vite）通过 |
 
 调试句柄：`window.__PF__`（world / camera / loop / backend / renderer / layers / shop / camp / audio / save / net）与 `__PF__.debug`（spawnEnemy / spawnBoss / stress / addXp / giveUltimate / teleport / upgrade / setStamina）。
