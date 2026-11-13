@@ -1,5 +1,4 @@
 import './ui/styles/acrylic.css';
-import type { Application } from 'pixi.js';
 import { GameLoop } from './core/loop';
 import { config } from './data/config';
 import { buildRegistry } from './skills/registry';
@@ -12,7 +11,7 @@ import { BaseView } from './render/base-view';
 import { Camera } from './render/camera';
 import { createCrosshair } from './render/crosshair';
 import { createGround } from './render/ground';
-import { applyCamera, createRenderApp } from './render/pixi-app';
+import { applyCamera, createRenderApp, detectBackend } from './render/pixi-app';
 import { WorldRenderer } from './render/renderer';
 import { spawnPlayer } from './sim/spawn';
 import { applyInput } from './sim/systems/input';
@@ -22,6 +21,7 @@ import { facilityAt, isInBase, type Facility } from './sim/base';
 import { setupAudio } from './app/audio-setup';
 import { collectMounts } from './app/mounts';
 import { setupSave } from './app/save-setup';
+import { setupNet } from './app/net-setup';
 import { SaveManager } from './save/manager';
 import { buildSnapshot } from './app/hud-bridge';
 import { installDebug, type DebugHandle } from './app/debug';
@@ -32,18 +32,6 @@ import { createShop } from './ui/shop';
 import { createTouch } from './ui/touch';
 import type { Vec2 } from './types';
 
-
-function detectBackend(app: Application): string {
-  const name = app.renderer.name;
-  if (name === 'webgpu') return 'WEBGPU';
-  if (name === 'webgl') return 'WEBGL';
-  if (name === 'canvas') return 'CANVAS 2D';
-  const type: unknown = app.renderer.type;
-  if (typeof type === 'string') return type.toUpperCase();
-  if (type === 1) return 'WEBGL';
-  if (type === 2) return 'WEBGPU';
-  return `GPU:${String(type)}`;
-}
 
 async function bootstrap(): Promise<void> {
   const { stage, hudRoot, shopRoot, touchRoot, fxRoot, campPromptRoot, upgradeRoot, boot } = collectMounts();
@@ -120,8 +108,11 @@ async function bootstrap(): Promise<void> {
   world.bus.on('ui:notice', (payload) => hud.notify(payload.text, payload.kind === 'info' ? 'info' : 'warn'));
   world.bus.on('player:levelup', (payload) => hud.levelUp(payload.level));
   world.bus.on('player:hurt', () => hud.hurtFlash());
+  world.bus.on('boss:phase', () => hud.notify('灰烬领主进入狂暴', 'warn'));
+  world.bus.on('boss:defeated', (payload) => hud.notify(`${payload.name} 被击败`, 'info'));
   hookAudio(audio, world);
   const saveHandle = setupSave(saveStore, world, audio, hud);
+  const net = await setupNet(world, render.layers, hudRoot);
 
   const mapPointer = (clientX: number, clientY: number): Vec2 => {
     const rect = stage.getBoundingClientRect();
@@ -142,7 +133,7 @@ async function bootstrap(): Promise<void> {
       if (camp.isUpgradeOpen()) camp.closeUpgrade();
     }
     if (keyboard.wasPressed('Tab')) shop.toggle();
-    if (shop.isOpen() || camp.isUpgradeOpen()) {
+    if (!net?.active && (shop.isOpen() || camp.isUpgradeOpen())) {
       keyboard.endStep();
       return;
     }
@@ -202,8 +193,13 @@ async function bootstrap(): Promise<void> {
       sprint: keyboard.isDown('ShiftLeft') || keyboard.isDown('ShiftRight'),
     });
 
-    tickWorld(world, dt);
-    saveHandle.update(dt);
+    if (net?.isClient) {
+      net.update(dt);
+    } else {
+      tickWorld(world, dt);
+      saveHandle.update(dt);
+      net?.update(dt);
+    }
 
     const transform = world.transforms.get(playerId);
     if (transform) {
@@ -228,6 +224,7 @@ async function bootstrap(): Promise<void> {
     applyCamera(render.layers, viewport, camera.renderPosition(alpha), camera.zoom);
     baseView.sync(world.elapsed);
     worldRenderer.sync(world, alpha);
+    net?.sync();
     floating.sync(world, camera);
     crosshair.update(viewport.toLogical(pointer.screen), pointer.inside && !touchMode);
     audio.update(frameSeconds, combatHeat(world, playerId));
@@ -279,6 +276,7 @@ async function bootstrap(): Promise<void> {
     camp,
     audio,
     save: saveStore,
+    net,
     debug: installDebug(world, playerId),
   };
 

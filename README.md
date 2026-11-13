@@ -1,8 +1,8 @@
-# Powerful Fire — M1 至 M6（战斗 / 商店 / 基地 / 音频 / 存档）
+# Powerful Fire — M1 至 M8（战斗 / 商店 / 基地 / 音频 / 存档 / 联机 / 收尾）
 
 > 按《Powerful Fire —— AI 开发提示词文档》第 16 节里程碑推进。
-> M1 骨架、M2 战斗、M3 商店/装配/冷却、M4 安全基地 + 体力、M5 音频之上，本次交付 **M6：IndexedDB 存档与版本迁移**。
-> 验收对照：出基地即被追击、回到基地仇恨立即清零且不掉血、商店 / 升级台交互、三类升级扣 XP 生效、冲刺与闪避耗体力、体力见底禁止闪避与技能失败提示。
+> M1 骨架、M2 战斗、M3 商店/装配/冷却、M4 安全基地 + 体力、M5 音频、M6 存档之上，本次交付 **M7 局域网联机 + M8 Boss / 性能 / 平衡收尾**。
+> 验收对照：出基地即被追击、回基地仇恨清零且不掉血、商店/升级台闭环、体力见底禁闪避与技能失败提示、双端位置/技能/伤害一致、120 敌 + 400 投射物逻辑 <4ms / 渲染 <8ms。
 
 ## 运行
 
@@ -12,7 +12,10 @@ pnpm install
 pnpm dev            # http://localhost:5173
 pnpm build          # tsc --noEmit + vite build
 pnpm preview        # 预览生产构建
+pnpm net            # 局域网中继 ws://0.0.0.0:8787（可选）
 ```
+
+联机：房主打开 `?net=host&room=ABCD`，队友打开 `?net=join&room=ABCD`（留空中继地址走同浏览器 BroadcastChannel；填写 `addr=ws://<主机IP>:8787` 走局域网中继）。也可点 HUD 右侧「⇄」打开联机大厅。
 
 触屏：浏览器打开 `?touch=1` 可强制启用虚拟摇杆（移动端 coarse pointer 会自动启用）。
 
@@ -106,6 +109,18 @@ pnpm preview        # 预览生产构建
 - `src/save/manager.ts`：读档时比较 IndexedDB 与 localStorage 的 `savedAt` 取较新者；`apply` 回写等级/XP/HP/位置/解锁/装配/大招/升级/统计/世界进度（位置 clamp，失效技能 ID 自动剔除）；速度与伤害按升级等级重算，MaxHP 直接采用存档值避免重复叠加。
 - 自动保存：60 秒游戏时间 + 关键节点（购买技能、升级台、升级）+ 卸载兜底；HUD 右上角 `SAVED` 指示 900ms；设置变更立即入档；`bootstrap` 用存档 seed 创建世界，镜头从存档位置开始。
 
+### M7：局域网联机（2–4 人）
+
+- `src/net/transport.ts`：`Transport` 抽象（`lan-host` / `lan-client` / `server` / `local`）。同浏览器用 `BroadcastChannel`；局域网用 `WebSocketTransport` 连 `server/index.mjs` 中继，房间码隔离，主机浏览器仍是唯一权威模拟端。
+- `src/net/protocol.ts` / `snapshot.ts`：输入包（move / aim / fire / dodge / ult / sprint / slot，30Hz）+ 快照包（玩家、敌人、投射物、区域、光球，20Hz，只带渲染/HUD 字段）。
+- `src/net/host.ts`：主机给每个队友创建远端 Player 实体（基地偏移出生），把网络输入写进 `world.remoteInputs`，20Hz 广播快照；200ms 无输入自动松开移动/开火，30s 无输入回收槽位。
+- `src/net/client.ts`：客机不跑模拟，只发输入；本地玩家按输入做位置预测，收到快照后以 4×dt 收敛，误差 >140 单位才硬同步；HP / 体力 / 等级 / 槽位 / 冷却 / 大招充能全部以主机快照为准，伤害结算只在主机发生。
+- `src/render/net-view.ts`：客机轻量渲染快照实体（玩家色环 + 朝向、敌人血条、投射物、区域、光球），100ms 双点插值；主机用同一视图只画队友（`playersOnly`），本地玩家仍走原 `WorldRenderer`。
+- 多玩家模拟重构：`world.playerIds` + `remoteInputs`，`playerSystem` / `castingSystem` / `statusSystem` 按玩家循环；敌人选最近的非基地玩家索敌，`damagePlayer(..., targetId)` 定点结算；刷怪 / XP 光球改为服务全体玩家。
+- 联机时商店 / 升级台不暂停世界；客机禁用本地存档写入。
+
+![LAN 2P](docs/m7-lan-preview.png)
+
 ### 渲染
 
 `src/render/enemy-view.ts`、`projectile-view.ts`、`area-view.ts`、`orb-view.ts`、`combat-views.ts`：
@@ -150,16 +165,19 @@ pnpm preview        # 预览生产构建
 | 存档迁移 | 写入 v1 档（seed 99 / LV2 / XP10 / KILL3）后刷新：自动升到 v3，等级/XP/击杀/位置保留，升级与设置补默认值，未丢档 |
 | 设置持久化 | Music 70% → 刷新后滑块与 `audio.settings` 均为 70%，四轨音量与静音随存档保存 |
 | 自动保存 | `save.update(61s)` 触发写盘，playtime 124→125、`savedAt` 更新；购买升级后立即落盘并显示 SAVED |
+| LAN 双端 | 房主 + 客机（BroadcastChannel）：主机 `playerIds=2`，客机预测位置与主机远端实体同坐标；客机 HUD 等级/HP/槽位来自快照 |
+| LAN 输入→快照 | WebSocket 中继 + 无头客机：远端玩家 240.5→712.5（2.6s，30Hz 输入），2.9s 收到 59 帧快照（≈20Hz） |
+| LAN 伤害/技能 | 客机出基地后被焦炭行者攻击 HP 100→88；客机火球命中敌人，快照敌人 HP 46→0.2、投射物峰值 3；伤害只在主机结算 |
 | 兼容 | WebGPU 初始化失败仅告警并降级 Canvas 2D；`pnpm build`（tsc strict + vite）通过 |
 
-调试句柄：`window.__PF__`（world / camera / loop / backend / renderer / layers / shop / camp / audio / save）与 `__PF__.debug`（spawnEnemy / addXp / giveUltimate / teleport / upgrade / setStamina）。
+调试句柄：`window.__PF__`（world / camera / loop / backend / renderer / layers / shop / camp / audio / save / net）与 `__PF__.debug`（spawnEnemy / spawnBoss / stress / addXp / giveUltimate / teleport / upgrade / setStamina）。
 
 ## 已知边界（下一里程碑）
 
 - 技能协同的「易燃×火球系引燃爆炸」「同系 3 个专精」尚未接入（状态与标签字段已就绪）。
 - 只有 1 种敌人（焦炭行者）；地图仍为单群系，区块加载与 5 群系顺延。
 - 小地图只有玩家点与基地区块，没有敌人/群系信息。
-- 无音频（M5）、无存档（M6）、无联机（M7）。
+- 联机仅房间码 + 中继地址手动加入，未做 mDNS 自动发现；断线 30s 内保留输入槽，重连需重新加入房间。
 - 平衡数值为初版，等待手感调优。
 
 ## 目录
@@ -172,9 +190,11 @@ src/
   app/     hud-bridge debug pf-global.d.ts mounts audio-setup save-setup
   audio/   audiobus synth sfx-map audio-hooks heat
   save/    schema idb manager
+  net/     protocol transport host client snapshot
   sim/     components runtime world spawn tick base upgrades
            systems/ aim input movement player casting enemies damage projectiles areas status spawner pickups notice
   skills/  registry helpers behaviors/(baguette heatgun projectile sorcery ultimate)
   render/  pixi-app viewport camera layers ground base-view player-view enemy-view projectile-view area-view orb-view combat-views crosshair aim-preview renderer
-  ui/      hud shop camp touch audio-panel floating-text styles/acrylic.css
+  ui/      hud shop camp touch audio-panel net-panel floating-text styles/acrylic.css
+server/    index.mjs  # WebSocket 房间中继（主机权威）
 ```

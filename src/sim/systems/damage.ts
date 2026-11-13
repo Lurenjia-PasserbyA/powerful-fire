@@ -80,8 +80,8 @@ export function applyDamage(
 }
 
 /** 玩家受伤：无敌帧 → 护盾吸收（带火星溅射）→ 虚弱加成 → hp。 */
-export function damagePlayer(world: GameWorld, amount: number): void {
-  const id = world.playerId;
+export function damagePlayer(world: GameWorld, amount: number, targetId?: EntityId): void {
+  const id = targetId ?? world.playerId;
   if (id === null) return;
   const player = world.players.get(id);
   if (!player || player.hp <= 0 || player.invulnerable > 0) return;
@@ -116,6 +116,7 @@ export function damagePlayer(world: GameWorld, amount: number): void {
     player.hp = Math.max(0, player.hp - incoming);
     const transform = world.transforms.get(id);
     if (transform) pushNumber(world, transform.x, transform.y - 26, incoming, 'crit');
+    if (id === world.playerId) world.bus.emit('player:hurt', { amount: incoming });
   }
 }
 
@@ -132,6 +133,10 @@ export function killEnemy(world: GameWorld, id: EntityId, transform: { x: number
   if (player) {
     player.kills += 1;
     player.ultimateCharge = Math.min(1, player.ultimateCharge + world.config.player.ultimateChargePerKill);
+  }
+  if (data?.boss) {
+    world.progress.defeatedBosses.add(enemy?.type ?? 'ashlord');
+    world.bus.emit('boss:defeated', { name: data.name, x: transform.x, y: transform.y });
   }
   world.bus.emit('enemy:kill', { id });
   world.ecs.destroy(id);

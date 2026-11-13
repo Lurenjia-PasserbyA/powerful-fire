@@ -31,6 +31,7 @@ export interface HudSnapshot {
   steps: number;
   entities: number;
   backend: string;
+  boss: { name: string; ratio: number } | null;
 }
 
 export interface Hud {
@@ -41,6 +42,7 @@ export interface Hud {
   hurtFlash(): void;
   reveal(): void;
   setTouchMode(active: boolean): void;
+  setBoss(boss: { name: string; ratio: number } | null): void;
   readonly root: HTMLElement;
 }
 
@@ -86,6 +88,14 @@ export function createHud(root: HTMLElement): Hud {
     };
   });
 
+  const bossBar = document.createElement('div');
+  bossBar.id = 'hud-boss';
+  bossBar.className = 'hud-boss';
+  bossBar.innerHTML = '<span class="hud-boss__name"></span><span class="hud-boss__track"><span class="hud-boss__fill"></span></span>';
+  root.appendChild(bossBar);
+  const bossName = bossBar.querySelector<HTMLElement>('.hud-boss__name');
+  const bossFill = bossBar.querySelector<HTMLElement>('.hud-boss__fill');
+
   let toastTimer: number | null = null;
 
   return {
@@ -124,7 +134,14 @@ export function createHud(root: HTMLElement): Hud {
     setTouchMode(active: boolean): void {
       root.classList.toggle('is-touch', active);
     },
+    setBoss(boss: { name: string; ratio: number } | null): void {
+      bossBar.classList.toggle('is-on', Boolean(boss));
+      if (!boss) return;
+      if (bossName) bossName.textContent = boss.name;
+      if (bossFill) bossFill.style.width = `${Math.max(0, Math.min(1, boss.ratio)) * 100}%`;
+    },
     update(s: HudSnapshot): void {
+      this.setBoss(s.boss);
       levelLabel.textContent = `LV ${s.level}`;
       const ratio = s.xpToNextLevel > 0 ? Math.min(1, s.xp / s.xpToNextLevel) : 0;
       xpValue.textContent = `${Math.round(s.xp)} / ${s.xpToNextLevel}`;

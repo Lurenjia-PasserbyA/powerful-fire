@@ -31,6 +31,17 @@ export interface GameEvents extends Record<string, unknown> {
   'skill:cast': { id: string; behavior: string; tier: string; x: number; y: number };
   'player:dodge': { x: number; y: number };
   'player:hurt': { amount: number };
+  'boss:phase': { phase: number; x: number; y: number };
+  'boss:defeated': { name: string; x: number; y: number };
+}
+
+export interface RemoteInput {
+  move: Vec2;
+  aimWorld: Vec2;
+  fireHeld: boolean;
+  dodgePressed: boolean;
+  ultPressed: boolean;
+  sprint: boolean;
 }
 
 export interface GameProgress {
@@ -79,7 +90,12 @@ export interface GameWorld {
   spawnTimer: number;
   wave: number;
   elapsed: number;
+  /** 本地玩家（HUD / 镜头 / 商店作用对象）。 */
   playerId: EntityId | null;
+  /** 参与模拟的全部玩家：本地 + 联机队友。 */
+  playerIds: EntityId[];
+  /** 远端玩家输入：实体 → 该帧控制状态。 */
+  remoteInputs: Map<EntityId, RemoteInput>;
 }
 
 function makeProjectile(): Projectile {
@@ -225,5 +241,7 @@ export function createGameWorld(options: {
     wave: 0,
     elapsed: 0,
     playerId: null,
+    playerIds: [],
+    remoteInputs: new Map(),
   };
 }

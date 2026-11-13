@@ -4,6 +4,7 @@ import type { SkillDef } from '../skills/registry';
 import type { EntityId } from '../types';
 import type { GameWorld } from '../sim/world';
 import { isInBase } from '../sim/base';
+import { enemyData } from '../data/enemies';
 
 /** 把逻辑层状态映射成 HUD 快照：main 只负责调度，不承担字段拼装。 */
 export function buildSnapshot(
@@ -29,6 +30,15 @@ export function buildSnapshot(
     };
   });
   const ultData = player.ultimate ? registry.get(player.ultimate)?.data : undefined;
+  let boss: HudSnapshot['boss'] = null;
+  for (const id of world.enemies.keys()) {
+    const enemy = world.enemies.get(id);
+    if (!enemy || enemy.type !== 'ashlord') continue;
+    const health = world.healths.get(id);
+    if (!health) continue;
+    boss = { name: enemyData('ashlord').name, ratio: health.hp / Math.max(1, health.maxHp) };
+    break;
+  }
 
   return {
     level: player.level,
@@ -56,5 +66,6 @@ export function buildSnapshot(
     steps: stats.stepsLastFrame,
     entities: world.ecs.count,
     backend,
+    boss,
   };
 }

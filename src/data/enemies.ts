@@ -11,6 +11,8 @@ export interface EnemyData {
   attackCooldown: number;
   xp: number;
   knockbackResist: number;
+  boss?: boolean;
+  summonType?: string;
 }
 
 export type EnemyKey = keyof typeof rawEnemies;

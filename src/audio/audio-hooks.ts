@@ -34,4 +34,6 @@ export function hookAudio(audio: AudioBus, world: GameWorld): void {
   world.bus.on('player:levelup', () => audio.play('levelup'));
   world.bus.on('shop:purchase', () => audio.play('buy'));
   world.bus.on('base:upgrade', () => audio.play('upgrade'));
+  world.bus.on('boss:phase', (payload) => audio.play('boss', { pan: panFor(payload.x) }));
+  world.bus.on('boss:defeated', (payload) => audio.play('bossDown', { pan: panFor(payload.x) }));
 }

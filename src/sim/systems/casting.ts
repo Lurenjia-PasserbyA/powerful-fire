@@ -4,11 +4,14 @@ import type { Player } from '../components';
 import type { CastContext } from '../runtime';
 import type { EntityId } from '../../types';
 import { sendNotice } from './notice';
+import { consumeUlt, controlInput } from '../player-input';
 
-/** 技能释放：滚轮换槽 → 前摇计时 → 冷却校验 → 行为执行；大招走能量条。 */
+/** 技能释放：所有玩家（本地 + 联机队友）共用冷却/前摇/体力规则。 */
 export function castingSystem(world: GameWorld, dt: number): void {
-  const id = world.playerId;
-  if (id === null) return;
+  for (const id of world.playerIds) updateCasting(world, id, dt);
+}
+
+function updateCasting(world: GameWorld, id: EntityId, dt: number): void {
   const player = world.players.get(id);
   const transform = world.transforms.get(id);
   if (!player || !transform) return;
@@ -18,7 +21,7 @@ export function castingSystem(world: GameWorld, dt: number): void {
     if (value > 0) player.cooldowns[key] = Math.max(0, value - dt);
   }
 
-  handleSlotSwitch(world, player);
+  if (id === world.playerId) handleSlotSwitch(world, player);
   armPassive(world, player);
 
   if (player.castTimer > 0) {
@@ -30,13 +33,10 @@ export function castingSystem(world: GameWorld, dt: number): void {
     }
   }
 
-  if (world.input.ultPressed) {
-    world.input.ultPressed = false;
-    tryUltimate(world, id, player);
-  }
+  if (consumeUlt(world, id)) tryUltimate(world, id, player);
 
   if (player.castTimer > 0) return;
-  if (world.input.fireHeld) {
+  if (controlInput(world, id).fireHeld) {
     const slotId = player.slots[player.activeSlot];
     if (slotId) tryCast(world, id, player, slotId);
   }
@@ -81,7 +81,7 @@ function tryCast(world: GameWorld, id: EntityId, player: Player, skillId: string
 
   const cost = skillStaminaCost(world, data);
   if (cost > 0 && player.stamina < cost) {
-    sendNotice(world, `体力不足，${data.name}释放失败`);
+    if (!player.remote) sendNotice(world, `体力不足，${data.name}释放失败`);
     return;
   }
   if (cost > 0) {
@@ -128,10 +128,11 @@ function executeSkill(world: GameWorld, id: EntityId, player: Player, skillId: s
     y: transform.y,
   });
 
+  const aim = controlInput(world, id).aimWorld;
   const ctx: CastContext = {
     caster: id,
     origin: { x: transform.x, y: transform.y },
-    aim: { x: world.input.aimWorld.x, y: world.input.aimWorld.y },
+    aim: { x: aim.x, y: aim.y },
     world,
     rng: world.rng,
   };
@@ -145,7 +146,7 @@ function tryUltimate(world: GameWorld, id: EntityId, player: Player): void {
   if (!def) return;
   const cost = skillStaminaCost(world, def.data);
   if (cost > 0 && player.stamina < cost) {
-    sendNotice(world, `体力不足，${def.data.name}无法释放`);
+    if (!player.remote) sendNotice(world, `体力不足，${def.data.name}无法释放`);
     return;
   }
   if (cost > 0) {

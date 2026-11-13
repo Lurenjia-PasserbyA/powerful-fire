@@ -1,11 +1,10 @@
 import type { GameWorld } from '../world';
-import { playerSnapshot } from '../../skills/helpers';
+import { alivePlayers } from '../player-input';
 
-/** XP 光球：散落 → 进入吸附半径后缓出加速 → 拾取并结算升级。 */
+/** XP 光球：散落 → 吸附到最近的存活玩家 → 拾取并结算升级。 */
 export function pickupSystem(world: GameWorld, dt: number): void {
-  const player = playerSnapshot(world);
-  const playerState = world.playerId !== null ? world.players.get(world.playerId) : undefined;
-  if (!player || !playerState) return;
+  const players = alivePlayers(world);
+  if (players.length === 0) return;
 
   for (const orb of world.orbs) {
     if (!orb.active) continue;
@@ -13,10 +12,19 @@ export function pickupSystem(world: GameWorld, dt: number): void {
     orb.prevY = orb.y;
     orb.life -= dt;
 
-    const dx = player.x - orb.x;
-    const dy = player.y - orb.y;
-    const distance = Math.hypot(dx, dy);
+    let target = players[0];
+    let distance = Infinity;
+    for (const ref of players) {
+      const d = Math.hypot(ref.transform.x - orb.x, ref.transform.y - orb.y);
+      if (d < distance) {
+        target = ref;
+        distance = d;
+      }
+    }
+    if (!target) continue;
 
+    const dx = target.transform.x - orb.x;
+    const dy = target.transform.y - orb.y;
     if (distance < 170) orb.attracted = true;
     if (orb.attracted && distance > 0.1) {
       const speed = 180 + (170 - Math.min(170, distance)) * 4.5;
@@ -31,7 +39,7 @@ export function pickupSystem(world: GameWorld, dt: number): void {
     orb.y += orb.vy * dt;
 
     if (distance < 22) {
-      addXp(world, playerState, orb.value);
+      addXp(world, target.player, orb.value);
       world.pools.orb.release(orb);
       continue;
     }
@@ -44,7 +52,11 @@ export function pickupSystem(world: GameWorld, dt: number): void {
   }
 }
 
-export function addXp(world: GameWorld, player: { level: number; xp: number; xpToNextLevel: number; maxHp: number; hp: number }, amount: number): void {
+export function addXp(
+  world: GameWorld,
+  player: { level: number; xp: number; xpToNextLevel: number; maxHp: number; hp: number },
+  amount: number,
+): void {
   player.xp += amount;
   while (player.xp >= player.xpToNextLevel) {
     player.xp -= player.xpToNextLevel;

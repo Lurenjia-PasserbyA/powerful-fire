@@ -17,6 +17,7 @@ declare global {
       shop: { open(): void; close(): void; toggle(): void; isOpen(): boolean };
       audio: AudioBus;
       save: SaveManager;
+  net?: unknown;
       camp: {
         openUpgrade(): void;
         closeUpgrade(): void;

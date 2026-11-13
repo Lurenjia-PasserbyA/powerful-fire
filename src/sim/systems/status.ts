@@ -20,20 +20,18 @@ export function statusSystem(world: GameWorld, dt: number): void {
     statuses.corroding = Math.max(0, statuses.corroding - cfg.corrodingDecay * dt);
   }
 
-  const playerId = world.playerId;
-  if (playerId !== null) {
+  for (const playerId of world.playerIds) {
     const player = world.players.get(playerId);
-    if (player) {
-      player.invulnerable = Math.max(0, player.invulnerable - dt);
-      player.dodgeCooldown = Math.max(0, player.dodgeCooldown - dt);
-      player.weakTimer = Math.max(0, player.weakTimer - dt);
-      player.overdrive = Math.max(0, player.overdrive - dt);
-      player.overheat = Math.max(0, player.overheat - world.config.combat.overheatDecay * dt);
-      player.minigunSpin = Math.max(0, player.minigunSpin - dt * 0.6);
-      player.noticeCooldown = Math.max(0, player.noticeCooldown - dt);
-      player.shieldTimer = Math.max(0, player.shieldTimer - dt);
-      if (player.shieldTimer <= 0) player.shield = 0;
-    }
+    if (!player) continue;
+    player.invulnerable = Math.max(0, player.invulnerable - dt);
+    player.dodgeCooldown = Math.max(0, player.dodgeCooldown - dt);
+    player.weakTimer = Math.max(0, player.weakTimer - dt);
+    player.overdrive = Math.max(0, player.overdrive - dt);
+    player.overheat = Math.max(0, player.overheat - world.config.combat.overheatDecay * dt);
+    player.minigunSpin = Math.max(0, player.minigunSpin - dt * 0.6);
+    player.noticeCooldown = Math.max(0, player.noticeCooldown - dt);
+    player.shieldTimer = Math.max(0, player.shieldTimer - dt);
+    if (player.shieldTimer <= 0) player.shield = 0;
   }
 
   for (const number of world.numbers) {

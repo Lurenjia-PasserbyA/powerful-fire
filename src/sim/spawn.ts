@@ -15,6 +15,30 @@ import type {
 import type { GameWorld } from './world';
 
 export function spawnPlayer(world: GameWorld, position?: { x: number; y: number }): EntityId {
+  const id = createPlayerEntity(world, position, false);
+  world.playerId = id;
+  return id;
+}
+
+/** 联机队友：由主机创建与模拟，不接管本地 HUD。 */
+export function spawnRemotePlayer(world: GameWorld, position?: { x: number; y: number }): EntityId {
+  const id = createPlayerEntity(world, position, true);
+  world.remoteInputs.set(id, {
+    move: { x: 0, y: 0 },
+    aimWorld: position ?? { x: config.base.spawn.x, y: config.base.spawn.y },
+    fireHeld: false,
+    dodgePressed: false,
+    ultPressed: false,
+    sprint: false,
+  });
+  return id;
+}
+
+function createPlayerEntity(
+  world: GameWorld,
+  position: { x: number; y: number } | undefined,
+  remote: boolean,
+): EntityId {
   const id = world.ecs.create();
   const spawnPos = position ?? { x: config.base.spawn.x, y: config.base.spawn.y };
   const loadout = config.startLoadout;
@@ -63,6 +87,7 @@ export function spawnPlayer(world: GameWorld, position?: { x: number; y: number 
     staminaDelay: 0,
     damageMult: 1,
     noticeCooldown: 0,
+    remote,
   };
   const aim: Aim = { x: spawnPos.x + 1, y: spawnPos.y };
 
@@ -72,7 +97,7 @@ export function spawnPlayer(world: GameWorld, position?: { x: number; y: number 
   world.movements.set(id, movement);
   world.players.set(id, player);
   world.aims.set(id, aim);
-  world.playerId = id;
+  world.playerIds.push(id);
 
   if (hasFeather(world, player)) player.reviveReady = true;
   world.bus.emit('player:spawn', { id });
@@ -102,6 +127,7 @@ export function spawnEnemy(world: GameWorld, type: string, x: number, y: number)
     timer: 0,
     attackCooldown: world.rng.float(0, 0.6),
     hurt: 0,
+    phase: 0,
   };
 
   world.transforms.set(id, transform);

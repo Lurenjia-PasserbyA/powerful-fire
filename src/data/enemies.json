@@ -10,5 +10,19 @@
     "attackCooldown": 1.2,
     "xp": 12,
     "knockbackResist": 0.3
+  },
+  "ashlord": {
+    "name": "灰烬领主",
+    "hp": 900,
+    "speed": 78,
+    "radius": 40,
+    "damage": 36,
+    "attackRange": 86,
+    "windup": 0.85,
+    "attackCooldown": 2.6,
+    "xp": 220,
+    "knockbackResist": 0.95,
+    "boss": true,
+    "summonType": "ashwalker"
   }
 }

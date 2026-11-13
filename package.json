@@ -1,20 +1,22 @@
 {
   "name": "powerful-fire",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
-  "description": "Powerful Fire - 2D top-down fire action RPG (M1-M6)",
+  "description": "M1-M7: combat, shop, base, stamina, audio, save, LAN co-op",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "net": "node server/index.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.23.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
-    "vite": "^8.3.8"
+    "vite": "^8.3.8",
+    "ws": "^8.22.2"
   }
 }

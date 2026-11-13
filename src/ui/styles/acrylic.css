@@ -1355,3 +1355,90 @@ body {
 .save-chip.is-on {
   opacity: 1;
 }
+
+/* M7 LAN 状态 chip：右上角音频按钮左侧 */
+.hud-net {
+  position: absolute;
+  top: 12px;
+  right: 92px;
+  z-index: 30;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 196, 92, 0.35);
+  background: rgba(20, 15, 11, 0.62);
+  color: #ffd98f;
+  font: 600 10px/1.4 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+
+/* M7 联机大厅 */
+.net-btn { top: 154px; }
+.net-panel {
+  position: absolute;
+  right: 24px;
+  top: 238px;
+  width: 240px;
+  padding: 10px 12px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(18, 16, 22, 0.94);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 160ms var(--ease-out-cubic), transform 160ms var(--ease-out-back);
+  z-index: 40;
+}
+.net-panel.is-open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.net-panel__field { display: grid; gap: 4px; margin: 8px 0; color: var(--text-dim); font-size: 10px; letter-spacing: 0.06em; }
+.net-panel__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 8, 10, 0.65);
+  color: var(--text);
+  font: 500 11px/1.4 'JetBrains Mono', ui-monospace, monospace;
+}
+.net-panel__row { display: flex; gap: 6px; align-items: center; }
+.net-panel__actions { display: flex; gap: 8px; margin-top: 10px; }
+.net-panel__btn {
+  flex: 1;
+  padding: 7px 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(36, 30, 26, 0.8);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.net-panel__btn:hover { border-color: rgba(255, 179, 71, 0.55); }
+.net-panel__btn--accent { border-color: rgba(255, 179, 71, 0.45); color: #ffd98f; }
+.net-panel__status { margin: 8px 0 6px; color: #ffd98f; font-size: 11px; }
+.net-panel__leave { width: 100%; margin-top: 8px; }
+
+/* M8 Boss 血条 */
+.hud-boss {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 340px;
+  display: grid;
+  gap: 5px;
+  padding: 8px 12px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 120, 60, 0.45);
+  background: rgba(22, 12, 8, 0.78);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms var(--ease-out-cubic);
+  z-index: 35;
+}
+.hud-boss.is-on { opacity: 1; }
+.hud-boss__name { color: #ffb37a; font: 700 12px/1.4 Inter, sans-serif; letter-spacing: 0.12em; }
+.hud-boss__track { height: 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); overflow: hidden; }
+.hud-boss__fill { display: block; height: 100%; width: 100%; background: #ff5c3d; transition: width 120ms var(--ease-out-cubic); }

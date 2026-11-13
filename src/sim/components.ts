@@ -40,6 +40,8 @@ export interface Enemy {
   timer: number;
   attackCooldown: number;
   hurt: number;
+  /** Boss 血量阶段：0 常规 / 1 狂暴 / 2 濒死。 */
+  phase: number;
 }
 
 /** burning 为剩余秒数，flammable / corroding 为层数（随时间缓慢衰减）。 */
@@ -85,6 +87,8 @@ export interface Player {
   damageMult: number;
   /** 提示节流，避免「体力不足」每帧刷屏。 */
   noticeCooldown: number;
+  /** 联机客机玩家由主机模拟，输入来自网络。 */
+  remote: boolean;
 }
 
 /** 瞄准点（世界坐标），由 AimResolver 平滑后写入，技能释放统一读这里。 */

@@ -4,16 +4,20 @@ import { circleDamage } from '../../skills/helpers';
 import { isInBase } from '../base';
 import type { Player } from '../components';
 import type { GameWorld } from '../world';
+import type { EntityId } from '../../types';
 import { pushNumber } from './damage';
 import { sendNotice } from './notice';
+import { consumeDodge, controlInput } from '../player-input';
 
 /**
- * 玩家控制：闪避与冲刺的体力消耗、基地内回血、体力回复、死亡/复活。
- * 位移速度写入 Velocity，由 movementSystem 统一积分。
+ * 玩家控制：本地与远端玩家共用同一套移动/闪避/体力/基地回复逻辑。
+ * 背后由 movementSystem 统一积分，HUD 只读本地玩家。
  */
 export function playerSystem(world: GameWorld, dt: number): void {
-  const id = world.playerId;
-  if (id === null) return;
+  for (const id of world.playerIds) updatePlayer(world, id, dt);
+}
+
+function updatePlayer(world: GameWorld, id: EntityId, dt: number): void {
   const player = world.players.get(id);
   const transform = world.transforms.get(id);
   const velocity = world.velocities.get(id);
@@ -21,31 +25,30 @@ export function playerSystem(world: GameWorld, dt: number): void {
   if (!player || !transform || !velocity || !movement) return;
 
   if (player.hp <= 0) {
-    handleDeath(world, player, transform);
+    handleDeath(world, id, player, transform);
     return;
   }
 
   const cfg = world.config;
   const staminaCfg = cfg.stamina;
   const inBase = isInBase(world, transform);
-  const aim = world.input.aimWorld;
+  const input = controlInput(world, id);
+  const aim = input.aimWorld;
   const dodgeCfg = cfg.player.dodge;
 
-  // 基地安全恢复：缓慢回血
   if (inBase && player.hp < player.maxHp) {
     player.hp = Math.min(player.maxHp, player.hp + cfg.base.healPerSecond * dt);
   }
 
-  if (world.input.dodgePressed) {
-    world.input.dodgePressed = false;
+  if (consumeDodge(world, id)) {
     if (player.dodgeCooldown <= 0 && player.dodgeTimer <= 0) {
       if (player.stamina < staminaCfg.dodgeCost) {
-        sendNotice(world, '体力不足，无法闪避');
+        if (!player.remote) sendNotice(world, '体力不足，无法闪避');
       } else {
         player.stamina -= staminaCfg.dodgeCost;
         player.staminaDelay = staminaCfg.regenDelay;
         const dir = normalize({ x: aim.x - transform.x, y: aim.y - transform.y });
-        const fallback = world.input.move;
+        const fallback = input.move;
         player.dodgeDir = dir.x === 0 && dir.y === 0 ? { x: fallback.x, y: fallback.y } : dir;
         if (player.dodgeDir.x === 0 && player.dodgeDir.y === 0) player.dodgeDir = { x: 1, y: 0 };
         player.dodgeTimer = dodgeCfg.duration;
@@ -56,7 +59,7 @@ export function playerSystem(world: GameWorld, dt: number): void {
     }
   }
 
-  const hasInput = world.input.move.x !== 0 || world.input.move.y !== 0;
+  const hasInput = input.move.x !== 0 || input.move.y !== 0;
 
   if (player.dodgeTimer > 0) {
     player.dodgeTimer = Math.max(0, player.dodgeTimer - dt);
@@ -64,14 +67,14 @@ export function playerSystem(world: GameWorld, dt: number): void {
     velocity.x = player.dodgeDir.x * speed;
     velocity.y = player.dodgeDir.y * speed;
   } else {
-    const sprinting = Boolean(world.input.sprint && hasInput && player.stamina > 0);
+    const sprinting = Boolean(input.sprint && hasInput && player.stamina > 0);
     if (sprinting) {
       player.stamina = Math.max(0, player.stamina - staminaCfg.sprintDrainPerSecond * dt);
       player.staminaDelay = staminaCfg.regenDelay;
     }
     const speed = movement.speed * (sprinting ? staminaCfg.sprintMultiplier : 1);
-    velocity.x = world.input.move.x * speed;
-    velocity.y = world.input.move.y * speed;
+    velocity.x = input.move.x * speed;
+    velocity.y = input.move.y * speed;
   }
 
   if (!hasInput && player.dodgeTimer <= 0) {
@@ -79,7 +82,6 @@ export function playerSystem(world: GameWorld, dt: number): void {
     velocity.y = 0;
   }
 
-  // 体力回复：动作结束后延迟片刻开始，基地内更快
   if (player.staminaDelay > 0) {
     player.staminaDelay = Math.max(0, player.staminaDelay - dt);
   } else if (player.stamina < player.staminaMax) {
@@ -90,6 +92,7 @@ export function playerSystem(world: GameWorld, dt: number): void {
 
 function handleDeath(
   world: GameWorld,
+  id: EntityId,
   player: Player,
   transform: { x: number; y: number; prevX: number; prevY: number },
 ): void {
@@ -114,7 +117,7 @@ function handleDeath(
       kind: 'explosion',
     });
     pushNumber(world, transform.x, transform.y - 30, damage, 'explosion');
-    sendNotice(world, '凤凰之羽生效：复活', 'info');
+    if (!player.remote) sendNotice(world, '凤凰之羽生效：复活', 'info');
     return;
   }
 
@@ -133,7 +136,17 @@ function handleDeath(
   player.staminaDelay = 0;
   player.invulnerable = 1.5;
 
-  const spawn = clampToBounds(config.base.spawn, world.config.player.radius, world.bounds.x, world.bounds.y);
+  const index = Math.max(0, world.playerIds.indexOf(id));
+  const angle = index * 1.2;
+  const spawn = clampToBounds(
+    {
+      x: config.base.spawn.x + Math.cos(angle) * (index === 0 ? 0 : 36),
+      y: config.base.spawn.y + Math.sin(angle) * (index === 0 ? 0 : 36),
+    },
+    world.config.player.radius,
+    world.bounds.x,
+    world.bounds.y,
+  );
   transform.x = spawn.x;
   transform.y = spawn.y;
   transform.prevX = spawn.x;
@@ -146,6 +159,6 @@ function handleDeath(
       world.ecs.destroy(enemyId);
     }
   }
-  world.bus.emit('player:death', { id: world.playerId ?? 0 });
-  sendNotice(world, '你倒下了：在基地复活', 'warn');
+  world.bus.emit('player:death', { id });
+  if (!player.remote) sendNotice(world, '你倒下了：在基地复活', 'warn');
 }

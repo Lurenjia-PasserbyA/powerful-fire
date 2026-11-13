@@ -99,3 +99,17 @@ export function applyCamera(
   layers.world.scale.set(zoom);
   layers.world.position.set(center.x - cameraPos.x * zoom, center.y - cameraPos.y * zoom);
 }
+
+
+/** 当前渲染后端标签（Canvas 软渲染时 UI 会切换 perf-lite）。 */
+export function detectBackend(app: Application): string {
+  const name = app.renderer.name;
+  if (name === 'webgpu') return 'WEBGPU';
+  if (name === 'webgl') return 'WEBGL';
+  if (name === 'canvas') return 'CANVAS 2D';
+  const type: unknown = app.renderer.type;
+  if (typeof type === 'string') return type.toUpperCase();
+  if (type === 1) return 'WEBGL';
+  if (type === 2) return 'WEBGPU';
+  return `GPU:${String(type)}`;
+}
