@@ -11,7 +11,7 @@ import { execFileSync } from 'node:child_process';
 const root = path.resolve(import.meta.dirname, '..');
 const outRoot = path.join(root, 'dist-app');
 const rawRoot = path.join(outRoot, 'raw');
-const version = '1.0.0';
+const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 
 if (!fs.existsSync(path.join(root, 'dist', 'index.html'))) {
   console.error('缺少 dist/index.html，请先运行 pnpm build');

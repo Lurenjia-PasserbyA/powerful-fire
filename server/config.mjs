@@ -1,4 +1,13 @@
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
+
+function packageVersion(root) {
+  try {
+    return JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version ?? '1.0.1';
+  } catch {
+    return '1.0.1';
+  }
+}
 
 function int(value, fallback) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
@@ -18,7 +27,7 @@ export function loadConfig(env = process.env, root = process.cwd()) {
     heartbeatMs: Math.max(5_000, int(env.PF_HEARTBEAT_MS, 20_000)),
     staticDir: env.PF_STATIC === '0' ? null : path.resolve(root, env.PF_STATIC ?? 'dist'),
     corsOrigin: env.PF_CORS_ORIGIN ?? '*',
-    version: env.PF_VERSION ?? '1.0.0',
+    version: env.PF_VERSION ?? packageVersion(root),
     region: env.PF_REGION ?? 'local',
     advertise: (env.PF_ADVERTISE ?? '')
       .split(',')

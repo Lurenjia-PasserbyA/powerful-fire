@@ -141,9 +141,12 @@ function executeSkill(world: GameWorld, id: EntityId, player: Player, skillId: s
 
 function tryUltimate(world: GameWorld, id: EntityId, player: Player): void {
   if (!player.ultimate) return;
-  if (player.ultimateCharge < 1) return;
   const def = world.registry.get(player.ultimate);
   if (!def) return;
+  if (player.ultimateCharge < 1) {
+    if (!player.remote) sendNotice(world, `${def.data.name}充能 ${Math.round(player.ultimateCharge * 100)}%`);
+    return;
+  }
   const cost = skillStaminaCost(world, def.data);
   if (cost > 0 && player.stamina < cost) {
     if (!player.remote) sendNotice(world, `体力不足，${def.data.name}无法释放`);

@@ -1650,3 +1650,157 @@ body {
 .net-panel__section { margin: 10px 0 2px; font-size: 9px; letter-spacing: 0.1em; color: var(--text-dim); }
 .touch__aim-hint { display: none; }
 .touch__actions .touch__btn { touch-action: none; }
+
+/* ===== v1.0.1 触控双摇杆与自适应重排 ===== */
+/* 右侧瞄准区改为第二摇杆：按下出现浮动摇杆，方向相对玩家换算准星。 */
+.touch__aim {
+  width: 54%;
+  z-index: 2;
+}
+.touch__aim-base {
+  position: absolute;
+  right: clamp(72px, 16vw, 220px);
+  bottom: clamp(78px, 22vh, 180px);
+  width: 144px;
+  height: 144px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 179, 71, 0.22);
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.04), rgba(18, 16, 22, 0.18));
+  display: grid;
+  place-items: center;
+  color: rgba(245, 239, 233, 0.22);
+  font-size: clamp(10px, 1.5vmin, 13px);
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
+.touch__aim-stick {
+  position: absolute;
+  width: 144px;
+  height: 144px;
+  margin: -72px 0 0 -72px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 179, 71, 0.16), rgba(18, 16, 22, 0.4));
+  border: 1px solid rgba(255, 179, 71, 0.5);
+  box-shadow: 0 0 24px rgba(255, 107, 53, 0.18);
+  opacity: 0;
+  transform: scale(0.88);
+  transition: opacity 100ms var(--ease-out-cubic), transform 100ms var(--ease-out-back);
+  pointer-events: none;
+}
+.touch__aim-stick.is-active { opacity: 1; transform: scale(1); }
+.touch__aim-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 66px;
+  height: 66px;
+  margin: -33px 0 0 -33px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 226, 173, 0.72), rgba(255, 138, 61, 0.38));
+  border: 1px solid rgba(255, 209, 143, 0.85);
+  box-shadow: 0 0 16px rgba(255, 138, 61, 0.3);
+}
+
+/* 按钮随屏幕短边放大，避免高分辨率手机上过小；同时限制上限防止平板过大。 */
+.touch__btn {
+  width: clamp(76px, 10vmin, 104px);
+  height: clamp(76px, 10vmin, 104px);
+  font-size: clamp(12px, 1.7vmin, 16px);
+  position: relative;
+  z-index: 1;
+}
+.touch__btn--ult {
+  width: clamp(92px, 13vmin, 116px);
+  height: clamp(92px, 13vmin, 116px);
+  font-size: clamp(13px, 1.9vmin, 17px);
+}
+.touch__btn.is-locked { opacity: 0.5; filter: grayscale(0.4); }
+.touch__actions {
+  right: calc(16px + env(safe-area-inset-right));
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  gap: clamp(8px, 1.6vmin, 14px);
+  z-index: 5;
+}
+.touch__auto {
+  right: calc(28px + 13vmin + env(safe-area-inset-right));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  left: auto;
+  top: auto;
+  font-size: clamp(10px, 1.45vmin, 13px);
+  padding: clamp(7px, 1.2vmin, 10px) clamp(10px, 1.8vmin, 15px);
+  z-index: 5;
+}
+.touch__shop {
+  top: clamp(160px, 26vh, 210px);
+  right: calc(16px + env(safe-area-inset-right));
+  font-size: clamp(10px, 1.45vmin, 13px);
+  padding: clamp(7px, 1.2vmin, 10px) clamp(10px, 1.8vmin, 15px);
+  z-index: 5;
+}
+.touch__slots {
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  gap: clamp(6px, 1.1vmin, 10px);
+  z-index: 4;
+}
+.touch__slot {
+  width: clamp(58px, 8.4vmin, 88px);
+  height: clamp(36px, 5vh, 48px);
+  font-size: clamp(10px, 1.4vmin, 13px);
+}
+.touch__stamina {
+  bottom: calc(68px + env(safe-area-inset-bottom));
+  width: clamp(150px, 24vmin, 260px);
+  margin-left: calc(clamp(150px, 24vmin, 260px) / -2);
+  height: clamp(4px, 0.7vmin, 7px);
+}
+
+/* 防止手机安全区/状态栏把画布挤偏 */
+html, body, #app, #stage { width: 100%; height: 100%; margin: 0; }
+
+/* 触屏用独立紧凑状态条，避免 720 逻辑高度的 HUD 在短屏上与 XP 面板重叠。 */
+.hud.is-touch .hud-vitals,
+.hud.is-touch .hud-slots { display: none; }
+
+.touch__hp {
+  position: absolute;
+  left: 50%;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  width: clamp(180px, 26vmin, 280px);
+  height: clamp(12px, 1.9vmin, 16px);
+  transform: translateX(-50%);
+  border-radius: 8px;
+  background: rgba(18, 16, 22, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  pointer-events: none;
+}
+.touch__hp-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #ff6b35, #e63946);
+  transition: width 120ms linear, background 180ms linear;
+}
+.touch__hp.is-low .touch__hp-fill { background: linear-gradient(90deg, #e63946, #b5172b); }
+.touch__hp-text {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: clamp(9px, 1.3vmin, 12px);
+  color: rgba(255, 246, 238, 0.85);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* 商店/自动开火移到左侧信息栏下方，右侧完全留给瞄准摇杆与闪避/大招。 */
+.touch__shop {
+  left: calc(16px + env(safe-area-inset-left));
+  right: auto;
+  top: clamp(96px, 15vh, 130px);
+}
+.touch__auto {
+  left: calc(16px + env(safe-area-inset-left));
+  right: auto;
+  top: clamp(136px, 21vh, 176px);
+  bottom: auto;
+}

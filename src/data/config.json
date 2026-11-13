@@ -167,13 +167,14 @@
   },
   "startLoadout": {
     "unlocked": [
-      "proj_fireball"
+      "proj_fireball",
+      "ult_firesky"
     ],
     "slots": [
       "proj_fireball",
       null,
       null
     ],
-    "ultimate": null
+    "ultimate": "ult_firesky"
   }
 }

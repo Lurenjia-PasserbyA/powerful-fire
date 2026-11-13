@@ -42,11 +42,13 @@ async function bootstrap(): Promise<void> {
   const { audio } = setupAudio(hudRoot, (volumes, muted) => saveStore.setSettings(volumes, muted));
   saveStore.applySettings(loadedSave);
   const render = await createRenderApp(stage, config, (viewport) => {
-    hudRoot.style.left = `${viewport.offsetX}px`;
-    hudRoot.style.top = `${viewport.offsetY}px`;
-    hudRoot.style.width = `${viewport.logicalWidth}px`;
-    hudRoot.style.height = `${viewport.logicalHeight}px`;
-    hudRoot.style.transform = `scale(${viewport.scale})`;
+    // HUD 独立于世界视口缩放：手机上保持可读字号，桌面端限制最大倍率避免过大。
+    const hudScale = Math.min(1.18, Math.max(0.95, viewport.scale));
+    hudRoot.style.left = '0px';
+    hudRoot.style.top = '0px';
+    hudRoot.style.width = `${viewport.cssWidth / hudScale}px`;
+    hudRoot.style.height = `${viewport.cssHeight / hudScale}px`;
+    hudRoot.style.transform = `scale(${hudScale})`;
   });
   const canvas = render.app.canvas;
   if (!(canvas instanceof HTMLCanvasElement)) throw new Error('渲染器未提供 canvas');
@@ -122,6 +124,10 @@ async function bootstrap(): Promise<void> {
   const touch = createTouch({
     host: touchRoot,
     mapPointer,
+    playerWorld: () => {
+      const t = world.transforms.get(playerId);
+      return t ? { x: t.x, y: t.y } : { x: 0, y: 0 };
+    },
     onShop: () => shop.toggle(),
     autoAim: () => nearestEnemyWorld(),
   });
@@ -299,6 +305,7 @@ async function bootstrap(): Promise<void> {
         const ultData = player.ultimate ? registry.get(player.ultimate)?.data : undefined;
         touch.setUltimate(ultData?.name ?? null, player.ultimateCharge);
         touch.setStamina(player.staminaMax > 0 ? player.stamina / player.staminaMax : 0, player.stamina < 25);
+        touch.setHp(player.hp, player.maxHp);
         const transform = world.transforms.get(playerId);
         const facility = transform ? facilityAt(world, transform) : null;
         camp.update(transform ? isInBase(world, transform) : false, facility);

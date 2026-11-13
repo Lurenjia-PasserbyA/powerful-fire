@@ -2,7 +2,7 @@
   "name": "powerful-fire",
   "main": "desktop/main.cjs",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Powerful Fire v1.0 — 2D top-down fire action RPG with server lobby, biomes, touch controls and multi-platform packages.",
   "scripts": {

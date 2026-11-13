@@ -30,6 +30,7 @@ export interface SaveData {
 }
 
 export const SAVE_VERSION = 3;
+export const DEFAULT_ULTIMATE = 'ult_firesky';
 
 export const DEFAULT_SETTINGS: SaveSettings = {
   master: 1,
@@ -71,6 +72,11 @@ export function migrateSave(raw: unknown): SaveData | null {
   const seed = num(source.seed, 1337);
   const level = Math.max(1, Math.round(num(player.level, 1)));
   const maxHp = Math.max(1, num(player.maxHp, 100 + (level - 1) * 8));
+  const unlockedSkills = strings(source.unlockedSkills);
+  // 旧存档可能没有大招：优先沿用已解锁的终极技能，否则发一个默认大招，避免按钮永远无效。
+  const savedUltimate = typeof loadout.ultimate === 'string' && loadout.ultimate ? loadout.ultimate : null;
+  const ultimate = savedUltimate ?? unlockedSkills.find((id) => id.startsWith('ult_')) ?? DEFAULT_ULTIMATE;
+  if (!unlockedSkills.includes(ultimate)) unlockedSkills.push(ultimate);
 
   return {
     version: SAVE_VERSION,
@@ -85,12 +91,12 @@ export function migrateSave(raw: unknown): SaveData | null {
       deaths: Math.max(0, Math.round(num(player.deaths, num(stats.deaths, 0)))),
       pos: { x: num(pos.x, 250), y: num(pos.y, 320) },
     },
-    unlockedSkills: strings(source.unlockedSkills),
+    unlockedSkills,
     loadout: {
       slots: Array.isArray(loadout.slots)
         ? loadout.slots.slice(0, 3).map((slot) => (typeof slot === 'string' ? slot : null))
         : ['proj_fireball', null, null],
-      ultimate: typeof loadout.ultimate === 'string' ? loadout.ultimate : null,
+      ultimate,
     },
     world: {
       exploredChunks: strings(world.exploredChunks),
