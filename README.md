@@ -1,7 +1,7 @@
-# Powerful Fire — M1 至 M5（战斗 / 商店 / 基地 / 体力 / 音频）
+# Powerful Fire — M1 至 M6（战斗 / 商店 / 基地 / 音频 / 存档）
 
 > 按《Powerful Fire —— AI 开发提示词文档》第 16 节里程碑推进。
-> M1 骨架、M2 战斗、M3 商店/装配/冷却、M4 安全基地 + 体力之上，本次交付 **M5：四轨音频总线（机械 + 法术双分层）与 UI 缓出动画**。
+> M1 骨架、M2 战斗、M3 商店/装配/冷却、M4 安全基地 + 体力、M5 音频之上，本次交付 **M6：IndexedDB 存档与版本迁移**。
 > 验收对照：出基地即被追击、回到基地仇恨立即清零且不掉血、商店 / 升级台交互、三类升级扣 XP 生效、冲刺与闪避耗体力、体力见底禁止闪避与技能失败提示。
 
 ## 运行
@@ -99,6 +99,13 @@ pnpm preview        # 预览生产构建
 - `src/audio/audio-hooks.ts`：订阅 `skill:cast`、`player:dodge`、`player:hurt`、`enemy:kill`、`shop:purchase`、`base:upgrade` 等逻辑事件，位置只用于声像。
 - UI：HUD 右上角新增音频按钮与四轨滑块 + 静音（打开面板不暂停）；等级横幅（ease-out-back 弹入）、受伤红色暗角（380ms 缓出）、提示 toast、面板开合均使用 `--ease-out-*` 令牌，全项目无 `linear` 缓动（仅 `linear-gradient` 背景纹理）。
 
+### M6：存档与迁移
+
+- `src/save/schema.ts`：`SaveData v3` 字段（seed / player level·xp·hp·maxHp·pos·deaths / unlockedSkills / loadout / world exploredChunks·defeatedBosses·bonfires / stats kills·playtime·deaths / progress 升级 / settings 四轨音量与静音）；`migrateSave` 把 v1 / v2 旧档逐字段补默认值升级到 v3，绝不直接丢弃。
+- `src/save/idb.ts`：原生 IndexedDB（库 `powerful-fire`、store `saves`、key `slot0`），失败回退 localStorage；`pagehide` / 页面隐藏时同步写 localStorage 兜底。
+- `src/save/manager.ts`：读档时比较 IndexedDB 与 localStorage 的 `savedAt` 取较新者；`apply` 回写等级/XP/HP/位置/解锁/装配/大招/升级/统计/世界进度（位置 clamp，失效技能 ID 自动剔除）；速度与伤害按升级等级重算，MaxHP 直接采用存档值避免重复叠加。
+- 自动保存：60 秒游戏时间 + 关键节点（购买技能、升级台、升级）+ 卸载兜底；HUD 右上角 `SAVED` 指示 900ms；设置变更立即入档；`bootstrap` 用存档 seed 创建世界，镜头从存档位置开始。
+
 ### 渲染
 
 `src/render/enemy-view.ts`、`projectile-view.ts`、`area-view.ts`、`orb-view.ts`、`combat-views.ts`：
@@ -139,9 +146,13 @@ pnpm preview        # 预览生产构建
 | 音频总线 | 首次点击后 AudioContext `running`（44.1kHz）；连播 80 次大招音，活动音源稳定在 32（上限）；Music 滑块 55%→30% 即时生效 |
 | 等级/受伤表现 | `player:levelup` 触发「LEVEL n」横幅；出基地受击 HP 100→88 且暗角闪烁，class 自动回落 |
 | 音频覆盖 | 火球/法棍/喷火/火箭/法术/陨石/大招/闪避/受伤/击杀/升级/购买/升级台均有独立双分层音色 |
+| 存档恢复 | 买技能/升级/击杀/传送到 (820,760) 后刷新：LV4、XP 60/305、HP 92/136、位置、槽位（陨石+火球）、大招焚天、三项升级、KILL 21 全部恢复 |
+| 存档迁移 | 写入 v1 档（seed 99 / LV2 / XP10 / KILL3）后刷新：自动升到 v3，等级/XP/击杀/位置保留，升级与设置补默认值，未丢档 |
+| 设置持久化 | Music 70% → 刷新后滑块与 `audio.settings` 均为 70%，四轨音量与静音随存档保存 |
+| 自动保存 | `save.update(61s)` 触发写盘，playtime 124→125、`savedAt` 更新；购买升级后立即落盘并显示 SAVED |
 | 兼容 | WebGPU 初始化失败仅告警并降级 Canvas 2D；`pnpm build`（tsc strict + vite）通过 |
 
-调试句柄：`window.__PF__`（world / camera / loop / backend / renderer / layers / shop / camp / audio）与 `__PF__.debug`（spawnEnemy / addXp / giveUltimate / teleport / upgrade / setStamina）。
+调试句柄：`window.__PF__`（world / camera / loop / backend / renderer / layers / shop / camp / audio / save）与 `__PF__.debug`（spawnEnemy / addXp / giveUltimate / teleport / upgrade / setStamina）。
 
 ## 已知边界（下一里程碑）
 
@@ -158,8 +169,9 @@ src/
   core/    loop ecs rng timer eventbus math pool
   data/    config(.json/.ts) skills(.json/.ts) enemies(.json/.ts) palette
   input/   keyboard mouse aim-resolver
-  app/     hud-bridge debug pf-global.d.ts
+  app/     hud-bridge debug pf-global.d.ts mounts audio-setup save-setup
   audio/   audiobus synth sfx-map audio-hooks heat
+  save/    schema idb manager
   sim/     components runtime world spawn tick base upgrades
            systems/ aim input movement player casting enemies damage projectiles areas status spawner pickups notice
   skills/  registry helpers behaviors/(baguette heatgun projectile sorcery ultimate)

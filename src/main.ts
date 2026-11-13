@@ -6,7 +6,6 @@ import { buildRegistry } from './skills/registry';
 import { AimResolver } from './input/aim-resolver';
 import { Keyboard } from './input/keyboard';
 import { Mouse, type PointerSnapshot } from './input/mouse';
-import { AudioBus } from './audio/audiobus';
 import { hookAudio } from './audio/audio-hooks';
 import { combatHeat } from './audio/heat';
 import { BaseView } from './render/base-view';
@@ -20,12 +19,15 @@ import { applyInput } from './sim/systems/input';
 import { tickWorld } from './sim/tick';
 import { createGameWorld, type GameWorld } from './sim/world';
 import { facilityAt, isInBase, type Facility } from './sim/base';
+import { setupAudio } from './app/audio-setup';
+import { collectMounts } from './app/mounts';
+import { setupSave } from './app/save-setup';
+import { SaveManager } from './save/manager';
 import { buildSnapshot } from './app/hud-bridge';
 import { installDebug, type DebugHandle } from './app/debug';
 import { FloatingTextLayer } from './ui/floating-text';
 import { createCampUi } from './ui/camp';
 import { createHud } from './ui/hud';
-import { createAudioPanel } from './ui/audio-panel';
 import { createShop } from './ui/shop';
 import { createTouch } from './ui/touch';
 import type { Vec2 } from './types';
@@ -44,27 +46,13 @@ function detectBackend(app: Application): string {
 }
 
 async function bootstrap(): Promise<void> {
-  const stage = document.getElementById('stage');
-  const hudRoot = document.getElementById('hud');
-  const shopRoot = document.getElementById('shop');
-  const touchRoot = document.getElementById('touch');
-  const fxRoot = document.getElementById('fx');
-  const campPromptRoot = document.getElementById('camp-prompt');
-  const upgradeRoot = document.getElementById('upgrade');
-  const boot = document.getElementById('boot');
-  if (!stage || !hudRoot || !shopRoot || !touchRoot || !fxRoot || !campPromptRoot || !upgradeRoot) {
-    throw new Error('缺少挂载点');
-  }
+  const { stage, hudRoot, shopRoot, touchRoot, fxRoot, campPromptRoot, upgradeRoot, boot } = collectMounts();
+  const saveStore = new SaveManager();
+  const loadedSave = await saveStore.load();
 
   const hud = createHud(hudRoot);
-  const audio = new AudioBus();
-  const audioPanel = createAudioPanel(hudRoot, audio);
-  const unlockAudio = (): void => {
-    audio.init();
-    audioPanel.refresh(audio.settings, audio.isMuted);
-  };
-  window.addEventListener('pointerdown', unlockAudio, { once: true });
-  window.addEventListener('keydown', unlockAudio, { once: true });
+  const { audio } = setupAudio(hudRoot, (volumes, muted) => saveStore.setSettings(volumes, muted));
+  saveStore.applySettings(loadedSave);
   const render = await createRenderApp(stage, config, (viewport) => {
     hudRoot.style.left = `${viewport.offsetX}px`;
     hudRoot.style.top = `${viewport.offsetY}px`;
@@ -77,9 +65,15 @@ async function bootstrap(): Promise<void> {
 
   const viewport = render.viewport;
   const registry = buildRegistry();
-  const world = createGameWorld({ registry });
+  const world = createGameWorld({ registry, seed: loadedSave?.seed });
   const playerId = spawnPlayer(world);
-  const camera = new Camera(viewport, { x: config.spawn.x, y: config.spawn.y }, config.camera.zoom);
+  if (loadedSave) saveStore.apply(world, loadedSave);
+  const spawnPoint = world.transforms.get(playerId);
+  const camera = new Camera(
+    viewport,
+    { x: spawnPoint?.x ?? config.spawn.x, y: spawnPoint?.y ?? config.spawn.y },
+    config.camera.zoom,
+  );
 
   render.layers.ground.addChild(
     createGround({ config, rng: world.rng, spawn: { x: config.spawn.x, y: config.spawn.y } }),
@@ -127,6 +121,7 @@ async function bootstrap(): Promise<void> {
   world.bus.on('player:levelup', (payload) => hud.levelUp(payload.level));
   world.bus.on('player:hurt', () => hud.hurtFlash());
   hookAudio(audio, world);
+  const saveHandle = setupSave(saveStore, world, audio, hud);
 
   const mapPointer = (clientX: number, clientY: number): Vec2 => {
     const rect = stage.getBoundingClientRect();
@@ -208,6 +203,7 @@ async function bootstrap(): Promise<void> {
     });
 
     tickWorld(world, dt);
+    saveHandle.update(dt);
 
     const transform = world.transforms.get(playerId);
     if (transform) {
@@ -282,6 +278,7 @@ async function bootstrap(): Promise<void> {
     shop,
     camp,
     audio,
+    save: saveStore,
     debug: installDebug(world, playerId),
   };
 

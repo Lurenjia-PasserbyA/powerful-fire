@@ -37,6 +37,7 @@ export interface Hud {
   update(snapshot: HudSnapshot): void;
   notify(text: string, kind?: 'warn' | 'info'): void;
   levelUp(level: number): void;
+  saved(): void;
   hurtFlash(): void;
   reveal(): void;
   setTouchMode(active: boolean): void;
@@ -67,6 +68,7 @@ export function createHud(root: HTMLElement): Hud {
   const toast = requireEl('hud-toast');
   const levelup = requireEl('hud-levelup');
   const hurt = requireEl('hud-hurt');
+  const saveChip = requireEl('hud-save');
   const ultValue = requireEl('hud-ult-value');
   const ultFill = requireEl('hud-ult-fill');
   const ultRing = requireEl('hud-ult-ring');
@@ -103,6 +105,12 @@ export function createHud(root: HTMLElement): Hud {
       window.setTimeout(() => {
         levelup.className = 'levelup';
       }, 1200);
+    },
+    saved(): void {
+      saveChip.className = 'save-chip is-on';
+      window.setTimeout(() => {
+        saveChip.className = 'save-chip';
+      }, 900);
     },
     hurtFlash(): void {
       hurt.className = 'hurt is-on';

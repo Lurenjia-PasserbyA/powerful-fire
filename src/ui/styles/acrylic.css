@@ -1335,3 +1335,23 @@ body {
 .hud.is-touch .audio-panel {
   top: 228px;
 }
+
+.save-chip {
+  position: absolute;
+  right: 24px;
+  top: 250px;
+  padding: 3px 8px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--accent-soft);
+  border: 1px solid rgba(255, 179, 71, 0.35);
+  border-radius: 4px;
+  background: rgba(20, 17, 24, 0.7);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms var(--ease-out-cubic);
+}
+
+.save-chip.is-on {
+  opacity: 1;
+}

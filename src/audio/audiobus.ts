@@ -36,6 +36,7 @@ export class AudioBus {
   private voices: Array<{ gain: GainNode; weight: number; until: number }> = [];
   private volumes: AudioVolumes = { master: 1, sfx: 0.8, ui: 0.7, music: 0.55 };
   private muted = false;
+  private readonly changeListeners = new Set<() => void>();
 
   get ready(): boolean {
     return this.ctx !== null;
@@ -86,11 +87,23 @@ export class AudioBus {
     const clamped = Math.max(0, Math.min(1, value));
     this.volumes[track] = clamped;
     this.applyVolumes();
+    this.notifyChange();
   }
 
   setMuted(muted: boolean): void {
     this.muted = muted;
     this.applyVolumes();
+    this.notifyChange();
+  }
+
+  /** 音量/静音变化订阅：UI 面板据此刷新，避免外部手动调用。 */
+  onChange(listener: () => void): () => void {
+    this.changeListeners.add(listener);
+    return () => this.changeListeners.delete(listener);
+  }
+
+  private notifyChange(): void {
+    for (const listener of this.changeListeners) listener();
   }
 
   /** 每帧调用：让音乐强度跟随战斗热度（基地内回落）。 */

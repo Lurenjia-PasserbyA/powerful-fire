@@ -38,6 +38,9 @@ export interface GameProgress {
   kills: number;
   spent: number;
   upgrades: { hp: number; speed: number; damage: number };
+  exploredChunks: Set<string>;
+  bonfires: Set<string>;
+  defeatedBosses: Set<string>;
 }
 
 /**
@@ -204,6 +207,9 @@ export function createGameWorld(options: {
       kills: 0,
       spent: 0,
       upgrades: { hp: 0, speed: 0, damage: 0 },
+      exploredChunks: new Set<string>(),
+      bonfires: new Set<string>(),
+      defeatedBosses: new Set<string>(),
     },
     projectiles: [],
     areas: [],

@@ -91,6 +91,7 @@ export function createAudioPanel(
     audio.playUi('uiClick');
   });
 
+  audio.onChange(render);
   render();
   return { refresh: render };
 }

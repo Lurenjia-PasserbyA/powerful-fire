@@ -3,6 +3,7 @@ import type { Camera } from '../render/camera';
 import type { GameWorld } from '../sim/world';
 import type { DebugHandle } from './debug';
 import type { AudioBus } from '../audio/audiobus';
+import type { SaveManager } from '../save/manager';
 
 declare global {
   interface Window {
@@ -15,6 +16,7 @@ declare global {
       layers: unknown;
       shop: { open(): void; close(): void; toggle(): void; isOpen(): boolean };
       audio: AudioBus;
+      save: SaveManager;
       camp: {
         openUpgrade(): void;
         closeUpgrade(): void;
