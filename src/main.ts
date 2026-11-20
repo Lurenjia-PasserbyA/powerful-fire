@@ -10,6 +10,7 @@ import { combatHeat } from './audio/heat';
 import { BaseView } from './render/base-view';
 import { Camera } from './render/camera';
 import { createCrosshair } from './render/crosshair';
+import { EffectLayer, enemyFxColor } from './render/effects';
 import { createGround } from './render/ground';
 import { applyCamera, createRenderApp, detectBackend } from './render/pixi-app';
 import { WorldRenderer } from './render/renderer';
@@ -79,6 +80,7 @@ async function bootstrap(): Promise<void> {
   render.layers.screen.addChild(crosshair.container);
   const worldRenderer = new WorldRenderer(render.layers);
   const floating = new FloatingTextLayer(fxRoot);
+  const effects = new EffectLayer(render.layers.vfx);
 
   const keyboard = new Keyboard(config.bindings);
   keyboard.attach();
@@ -142,19 +144,62 @@ async function bootstrap(): Promise<void> {
   world.bus.on('player:hurt', (payload) => {
     hud.hurtFlash();
     camera.kick(Math.min(15, 4 + payload.amount * 0.35), 0.22);
+    effects.explosion(payload.x, payload.y, 54, 0xff4358, 1.1);
     hitstop = Math.max(hitstop, 0.055);
   });
-  world.bus.on('boss:phase', () => {
+  world.bus.on('player:death', (payload) => {
+    const transform = world.transforms.get(payload.id);
+    if (!transform) return;
+    effects.explosion(transform.x, transform.y, 130, 0xff4358, 2.2);
+    camera.kick(22, 0.5);
+  });
+  world.bus.on('boss:phase', (payload) => {
     hud.notify('首领进入狂暴', 'warn');
     camera.kick(16, 0.32);
+    effects.shockwave(payload.x, payload.y, 190, 0xff6b35, 0.55);
+    effects.burst(payload.x, payload.y, 0xff8a3d, 24, 320, 8, 0.6);
     hitstop = Math.max(hitstop, 0.11);
   });
   world.bus.on('boss:defeated', (payload) => hud.notify(`${payload.name} 被击败`, 'info'));
   world.bus.on('biome:enter', (payload) => hud.notify(`进入 ${payload.name}`, 'info'));
   world.bus.on('skill:cast', (payload) => {
-    if (payload.tier === 'power' || payload.tier === 'ultimate') camera.kick(5, 0.16);
+    const automatic = payload.behavior === 'minigun';
+    const kick =
+      payload.behavior === 'beam' ? 7.5
+      : payload.behavior === 'shotgun' ? 5
+      : automatic ? 0.9
+      : payload.tier === 'ultimate' ? 12
+      : payload.tier === 'power' ? 5
+      : 2.4;
+    if (!automatic && (payload.tier === 'power' || payload.tier === 'ultimate')) camera.kick(5, 0.16);
+    camera.recoil(payload.x - payload.aimX, payload.y - payload.aimY, kick, 0.16);
+    crosshair.kick(automatic ? 0.05 : payload.tier === 'ultimate' ? 0.26 : payload.tier === 'power' ? 0.16 : 0.08);
+    const color = payload.behavior === 'beam' ? 0x5ef2ff : payload.tier === 'ultimate' ? 0xff6b35 : 0xffd166;
+    const power = payload.tier === 'ultimate' ? 1.8 : payload.behavior === 'beam' ? 1.35 : automatic ? 0.7 : 1;
+    effects.muzzle(payload.x, payload.y, payload.aimX, payload.aimY, color, power);
   });
-  world.bus.on('player:dodge', () => camera.kick(3, 0.12));
+  world.bus.on('player:dodge', (payload) => {
+    camera.kick(3, 0.12);
+    effects.burst(payload.x, payload.y, 0x5ef2ff, 10, 220, 5, 0.3);
+  });
+  world.bus.on('enemy:hit', (payload) => {
+    if (payload.kind === 'burn') return;
+    effects.impact(payload.x, payload.y, 0xffd28a, payload.amount);
+    if (payload.amount >= 55) {
+      camera.kick(2.5, 0.12);
+      hitstop = Math.max(hitstop, 0.022);
+    }
+  });
+  world.bus.on('enemy:kill', (payload) => {
+    const boss = payload.boss;
+    effects.explosion(payload.x, payload.y, boss ? 190 : 58, enemyFxColor(payload.type), boss ? 2.4 : 1);
+    camera.kick(boss ? 12 : 2.2, boss ? 0.34 : 0.12);
+    if (boss) hitstop = Math.max(hitstop, 0.07);
+  });
+  world.bus.on('fx:explosion', (payload) => {
+    effects.explosion(payload.x, payload.y, payload.radius, 0xff8a3d, Math.min(2.2, 1 + payload.power * 0.4));
+    if (payload.radius >= 100) camera.kick(4, 0.18);
+  });
   hookAudio(audio, world);
   const saveHandle = setupSave(saveStore, world, audio, hud);
   const net = await setupNet(world, render.layers, hudRoot);
@@ -345,9 +390,10 @@ async function bootstrap(): Promise<void> {
     applyCamera(render.layers, viewport, camera.renderPosition(alpha), camera.zoom);
     baseView.sync(world.elapsed);
     worldRenderer.sync(world, alpha);
+    effects.update(frameSeconds, world);
     net?.sync();
     floating.sync(world, camera);
-    crosshair.update(viewport.toLogical(pointer.screen), pointer.inside && !touchMode);
+    crosshair.update(viewport.toLogical(pointer.screen), pointer.inside && !touchMode, frameSeconds);
     audio.update(frameSeconds, combatHeat(world, playerId));
 
     hudAccumulator += frameSeconds;

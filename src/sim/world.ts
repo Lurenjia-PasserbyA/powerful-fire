@@ -25,13 +25,15 @@ export interface GameEvents extends Record<string, unknown> {
   'player:spawn': { id: EntityId };
   'player:death': { id: EntityId };
   'player:levelup': { level: number };
-  'enemy:kill': { id: EntityId };
+  'enemy:kill': { id: EntityId; x: number; y: number; type: string; boss: boolean };
   'shop:purchase': { skillId: string; price: number };
   'base:upgrade': { kind: string; level: number };
   'ui:notice': { text: string; kind: string };
-  'skill:cast': { id: string; behavior: string; tier: string; x: number; y: number };
+  'skill:cast': { id: string; behavior: string; tier: string; x: number; y: number; aimX: number; aimY: number };
   'player:dodge': { x: number; y: number };
-  'player:hurt': { amount: number };
+  'player:hurt': { amount: number; x: number; y: number };
+  'enemy:hit': { x: number; y: number; amount: number; kind: string };
+  'fx:explosion': { x: number; y: number; radius: number; power: number };
   'boss:phase': { phase: number; x: number; y: number };
   'boss:defeated': { name: string; x: number; y: number };
   'biome:enter': { id: BiomeId; name: string };

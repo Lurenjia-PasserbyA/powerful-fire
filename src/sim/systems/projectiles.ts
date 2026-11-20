@@ -115,6 +115,7 @@ function rotateToward(current: number, target: number, maxStep: number): number 
 }
 
 function explode(world: GameWorld, x: number, y: number, radius: number, damage: number, ignite: number, knockback: number): void {
+  world.bus.emit('fx:explosion', { x, y, radius, power: Math.max(1, radius / 90) });
   circleDamage(world, { x, y }, radius, damage, {
     fromPlayer: true,
     ignite,

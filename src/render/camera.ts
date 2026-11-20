@@ -15,6 +15,9 @@ export class Camera {
   private shakeAmp = 0;
   private shakeLeft = 0;
   private shakePhase = 0;
+  private recoilX = 0;
+  private recoilY = 0;
+  private recoilLeft = 0;
 
   constructor(
     private readonly viewport: Viewport,
@@ -42,8 +45,23 @@ export class Camera {
     this.shakeLeft = Math.max(this.shakeLeft, duration);
   }
 
+  /** 朝后坐方向短促偏移，比随机震屏更有“开枪”的方向感。 */
+  recoil(dx: number, dy: number, strength: number, duration = 0.16): void {
+    const length = Math.hypot(dx, dy);
+    if (length <= 0.001) return;
+    const scale = strength / length;
+    this.recoilX = dx * scale;
+    this.recoilY = dy * scale;
+    this.recoilLeft = Math.max(this.recoilLeft, duration);
+  }
+
   update(dt: number, target: Vec2, followLerp: number, worldSize: Vec2): void {
     this.shakePhase += dt * 52;
+    this.recoilLeft = Math.max(0, this.recoilLeft - dt);
+    if (this.recoilLeft <= 0) {
+      this.recoilX = 0;
+      this.recoilY = 0;
+    }
     this.shakeLeft = Math.max(0, this.shakeLeft - dt);
     if (this.shakeLeft <= 0) this.shakeAmp = 0;
     this.prevX = this.x;
@@ -80,11 +98,14 @@ export class Camera {
 
   renderPosition(alpha: number): Vec2 {
     const base = { x: lerp(this.prevX, this.x, alpha), y: lerp(this.prevY, this.y, alpha) };
-    if (this.shakeAmp <= 0) return base;
+    const recoilFalloff = Math.min(1, this.recoilLeft * 10);
+    const rx = this.recoilX * recoilFalloff;
+    const ry = this.recoilY * recoilFalloff;
+    if (this.shakeAmp <= 0) return { x: base.x + rx, y: base.y + ry };
     const falloff = Math.min(1, this.shakeLeft * 8);
     return {
-      x: base.x + Math.sin(this.shakePhase * 1.7) * this.shakeAmp * falloff,
-      y: base.y + Math.cos(this.shakePhase * 2.3) * this.shakeAmp * falloff * 0.7,
+      x: base.x + rx + Math.sin(this.shakePhase * 1.7) * this.shakeAmp * falloff,
+      y: base.y + ry + Math.cos(this.shakePhase * 2.3) * this.shakeAmp * falloff * 0.7,
     };
   }
 }

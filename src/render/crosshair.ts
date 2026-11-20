@@ -4,7 +4,8 @@ import type { Vec2 } from '../types';
 
 export interface Crosshair {
   readonly container: Container;
-  update(logicalPointer: Vec2, visible: boolean): void;
+  update(logicalPointer: Vec2, visible: boolean, dt?: number): void;
+  kick(amount: number): void;
 }
 
 /** 自定义扁平准星：四向刻度 + 外环 + 中心点，隐藏系统光标后由它接管指向。 */
@@ -24,11 +25,17 @@ export function createCrosshair(): Crosshair {
   g.circle(0, 0, gap + len + 6).stroke({ width: 1, color: palette.fire, alpha: 0.35 });
 
   container.addChild(g);
+  let spread = 0;
 
   return {
     container,
-    update(logicalPointer: Vec2, visible: boolean): void {
+    kick(amount: number): void {
+      spread = Math.max(spread, amount);
+    },
+    update(logicalPointer: Vec2, visible: boolean, dt = 1 / 60): void {
+      spread = Math.max(0, spread - dt * 5);
       container.position.set(logicalPointer.x, logicalPointer.y);
+      container.scale.set(1 + spread);
       container.visible = visible;
     },
   };

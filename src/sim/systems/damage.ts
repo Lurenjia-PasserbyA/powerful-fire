@@ -64,6 +64,9 @@ export function applyDamage(
   }
   if (!options.silent) {
     pushNumber(world, transform.x, transform.y - 18, dealt, options.kind ?? 'hit');
+    if (world.enemies.has(targetId)) {
+      world.bus.emit('enemy:hit', { x: transform.x, y: transform.y, amount: dealt, kind: options.kind ?? 'hit' });
+    }
   }
 
   if (options.fromPlayer) {
@@ -116,7 +119,7 @@ export function damagePlayer(world: GameWorld, amount: number, targetId?: Entity
     player.hp = Math.max(0, player.hp - incoming);
     const transform = world.transforms.get(id);
     if (transform) pushNumber(world, transform.x, transform.y - 26, incoming, 'crit');
-    if (id === world.playerId) world.bus.emit('player:hurt', { amount: incoming });
+    if (id === world.playerId) world.bus.emit('player:hurt', { amount: incoming, x: transform?.x ?? 0, y: transform?.y ?? 0 });
   }
 }
 
@@ -138,7 +141,13 @@ export function killEnemy(world: GameWorld, id: EntityId, transform: { x: number
     world.progress.defeatedBosses.add(enemy?.type ?? 'ashlord');
     world.bus.emit('boss:defeated', { name: data.name, x: transform.x, y: transform.y });
   }
-  world.bus.emit('enemy:kill', { id });
+  world.bus.emit('enemy:kill', {
+    id,
+    x: transform.x,
+    y: transform.y,
+    type: enemy?.type ?? 'ashwalker',
+    boss: Boolean(data?.boss),
+  });
   world.ecs.destroy(id);
 }
 
