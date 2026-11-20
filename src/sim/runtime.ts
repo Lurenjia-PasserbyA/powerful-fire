@@ -50,7 +50,8 @@ export type AreaKind =
   | 'meteor'
   | 'telegraph'
   | 'slash'
-  | 'dash';
+  | 'dash'
+  | 'beam';
 
 export interface Area {
   active: boolean;
@@ -69,6 +70,8 @@ export interface Area {
   damage: number;
   applied: boolean;
   delay: number;
+  /** 敌方区域：伤害玩家而不是敌人。 */
+  hostile?: boolean;
 }
 
 export interface XpOrb {

@@ -60,6 +60,7 @@ export class AreaViewLayer {
 function applyScale(g: Graphics, area: Area): void {
   switch (area.kind) {
     case 'wall':
+    case 'beam':
     case 'dash':
       g.scale.set(Math.max(0.05, area.length / 200), Math.max(0.05, area.width / 100));
       break;
@@ -82,6 +83,8 @@ function baseAlpha(kind: AreaKind): number {
       return 0.32;
     case 'telegraph':
       return 0.5;
+    case 'beam':
+      return 0.85;
     case 'dash':
       return 0.6;
     case 'slash':
@@ -133,6 +136,11 @@ function drawArea(g: Graphics, kind: AreaKind): void {
       break;
     case 'slash':
       g.poly([-100, -6, 60, -34, 100, 0, 60, 34, -100, 6]).fill({ color: palette.spark, alpha: 0.8 });
+      break;
+    case 'beam':
+      g.roundRect(-100, -50, 200, 100, 8).fill({ color: 0x7af5ff, alpha: 0.3 });
+      g.roundRect(-100, -16, 200, 32, 6).fill({ color: 0xeaffff, alpha: 0.75 });
+      g.moveTo(-100, 0).lineTo(100, 0).stroke({ width: 8, color: palette.fireSoft, alpha: 0.5 });
       break;
     case 'dash':
       g.roundRect(-100, -40, 200, 80, 16).fill({ color: palette.fireSoft, alpha: 0.5 });

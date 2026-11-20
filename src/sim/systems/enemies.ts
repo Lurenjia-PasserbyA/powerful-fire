@@ -2,11 +2,12 @@ import { angleBetween } from '../../core/math';
 import { enemyData } from '../../data/enemies';
 import type { EntityId } from '../../types';
 import type { GameWorld } from '../world';
-import { damagePlayer } from './damage';
+import { damagePlayer, killEnemy } from './damage';
 import { isInBase } from '../base';
 import { alivePlayers, type PlayerRef } from '../player-input';
 import { spawnEnemy } from '../spawn';
 import { clampToBounds } from '../../core/math';
+import { spawnArea } from '../../skills/helpers';
 
 /**
  * 敌人状态机：idle → chase → windup → recover。
@@ -76,6 +77,48 @@ export function enemySystem(world: GameWorld, dt: number): void {
 
     if (enemy.hurt > 0) continue;
 
+    const role = data.role ?? 'melee';
+    const preferred = data.preferredRange ?? data.attackRange;
+
+    // 远程/召唤：保持中距离；太近后撤、太远靠近，攻击时在目标脚下留下预警。
+    if ((role === 'caster' || role === 'summoner') && enemy.state !== 'windup' && enemy.state !== 'recover') {
+      if (distance < preferred - 55) {
+        velocity.x = -dirX * data.speed;
+        velocity.y = -dirY * data.speed;
+      } else if (distance > preferred + 70) {
+        velocity.x = dirX * data.speed;
+        velocity.y = dirY * data.speed;
+      }
+      if (distance <= preferred + 110) {
+        if (enemy.attackCooldown <= 0) {
+          if (role === 'caster') {
+            spawnHostileArea(world, target.transform, data);
+          } else {
+            summonAdds(world, transform, data, data.summonType ?? 'emberling', data.summonCount ?? 3);
+          }
+          enemy.attackCooldown = data.attackCooldown;
+          enemy.state = 'recover';
+          enemy.timer = 0.35;
+        }
+      }
+      continue;
+    }
+
+    if (role === 'charger' && enemy.state === 'dash') {
+      enemy.timer -= dt;
+      velocity.x = dirX * (data.dashSpeed ?? 460);
+      velocity.y = dirY * (data.dashSpeed ?? 460);
+      if (enemy.attackCooldown <= 0 && distance <= movement.radius + 22 + 18) {
+        damagePlayer(world, data.damage, target.id);
+        enemy.attackCooldown = data.attackCooldown;
+      }
+      if (enemy.timer <= 0) {
+        enemy.state = 'recover';
+        enemy.timer = 0.35;
+      }
+      continue;
+    }
+
     switch (enemy.state) {
       case 'idle':
         if (distance < world.config.spawner.aggroDistance) enemy.state = 'chase';
@@ -96,8 +139,26 @@ export function enemySystem(world: GameWorld, dt: number): void {
       case 'windup':
         enemy.timer -= dt;
         if (enemy.timer <= 0) {
+          if (role === 'bomber') {
+            // 自爆：范围伤害后自身销毁
+            const radius = data.explodeRadius ?? 90;
+            for (const ref of alivePlayers(world)) {
+              if (Math.hypot(ref.transform.x - transform.x, ref.transform.y - transform.y) <= radius) {
+                damagePlayer(world, data.explodeDamage ?? data.damage, ref.id);
+              }
+            }
+            if (data.explodeRadius) {
+              spawnArea(world, { kind: 'pool', x: transform.x, y: transform.y, radius, life: 0.6, dps: 0, delay: 0 });
+            }
+            killEnemy(world, id, transform);
+            continue;
+          }
+          if (role === 'charger') {
+            enemy.state = 'dash';
+            enemy.timer = data.dashDuration ?? 0.28;
+            break;
+          }
           if (data.boss) {
-            // 灰烬领主震地：范围内全体玩家受伤
             for (const ref of alivePlayers(world)) {
               if (Math.hypot(ref.transform.x - transform.x, ref.transform.y - transform.y) <= 190) {
                 damagePlayer(world, data.damage, ref.id);
@@ -153,4 +214,46 @@ function separate(world: GameWorld): void {
       tb.y += ny * push;
     }
   }
+}
+
+
+/** 远程敌人：在目标位置生成红色预警圈，延迟后对范围内玩家造成伤害。 */
+function spawnHostileArea(world: GameWorld, target: { x: number; y: number }, data: ReturnType<typeof enemyData>): void {
+  const radius = data.projectileRadius ?? 60;
+  const delay = data.projectileDelay ?? 0.5;
+  spawnArea(world, {
+    kind: 'meteor',
+    x: target.x,
+    y: target.y,
+    radius,
+    life: delay,
+    damage: data.damage,
+    delay,
+    hostile: true,
+  });
+}
+
+/** 召唤师：在自身周围生成小怪，受场上上限约束。 */
+function summonAdds(
+  world: GameWorld,
+  origin: { x: number; y: number },
+  data: ReturnType<typeof enemyData>,
+  type: string,
+  count: number,
+): void {
+  const maxAlive = world.config.spawner.maxAlive;
+  for (let i = 0; i < count; i += 1) {
+    if (world.enemies.size >= maxAlive) break;
+    const angle = world.rng.float(0, Math.PI * 2);
+    const distance = world.rng.float(45, 90);
+    const position = clampToBounds(
+      { x: origin.x + Math.cos(angle) * distance, y: origin.y + Math.sin(angle) * distance },
+      18,
+      world.bounds.x,
+      world.bounds.y,
+    );
+    if (isInBase(world, position, 40)) continue;
+    spawnEnemy(world, type, position.x, position.y);
+  }
+  void data;
 }

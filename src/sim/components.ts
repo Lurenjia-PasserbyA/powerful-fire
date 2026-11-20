@@ -33,7 +33,7 @@ export interface Health {
   maxHp: number;
 }
 
-export type EnemyState = 'idle' | 'chase' | 'windup' | 'recover' | 'retreat';
+export type EnemyState = 'idle' | 'chase' | 'windup' | 'recover' | 'retreat' | 'dash';
 
 export interface Enemy {
   type: string;

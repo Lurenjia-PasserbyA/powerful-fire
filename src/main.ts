@@ -30,11 +30,13 @@ import { createCampUi } from './ui/camp';
 import { createHud } from './ui/hud';
 import { createShop } from './ui/shop';
 import { createTouch } from './ui/touch';
+import { createStartMenu } from './ui/start-menu';
 import type { Vec2 } from './types';
 
 
 async function bootstrap(): Promise<void> {
-  const { stage, hudRoot, shopRoot, touchRoot, fxRoot, campPromptRoot, upgradeRoot, boot } = collectMounts();
+  const { stage, hudRoot, shopRoot, touchRoot, fxRoot, campPromptRoot, upgradeRoot, menuRoot, boot } = collectMounts();
+  const params = new URLSearchParams(window.location.search);
   const saveStore = new SaveManager();
   const loadedSave = await saveStore.load();
 
@@ -55,7 +57,8 @@ async function bootstrap(): Promise<void> {
 
   const viewport = render.viewport;
   const registry = buildRegistry();
-  const world = createGameWorld({ registry, seed: loadedSave?.seed });
+  const requestedSeed = Number.parseInt(params.get('seed') ?? '', 10);
+  const world = createGameWorld({ registry, seed: Number.isFinite(requestedSeed) && requestedSeed > 0 ? requestedSeed : loadedSave?.seed });
   const playerId = spawnPlayer(world);
   if (loadedSave) saveStore.apply(world, loadedSave);
   const spawnPoint = world.transforms.get(playerId);
@@ -87,12 +90,39 @@ async function bootstrap(): Promise<void> {
   let pointer: PointerSnapshot = mouse.read();
   aimResolver.reset(viewport.toLogical(pointer.screen));
 
-  const params = new URLSearchParams(window.location.search);
   const touchMode = params.get('touch') === '1' || window.matchMedia('(pointer: coarse)').matches;
 
   window.addEventListener('keydown', (event) => {
     if (event.code === 'Tab') event.preventDefault();
   });
+
+  let menuOpen = !(params.has('net') || params.get('autostart') === '1');
+  const startMenu = createStartMenu(menuRoot, {
+    hasSave: Boolean(loadedSave),
+    saveInfo: loadedSave
+      ? { level: loadedSave.player.level, kills: loadedSave.stats.kills, playtimeSec: loadedSave.stats.playtimeSec }
+      : null,
+    onResume: () => {
+      menuOpen = false;
+      startMenu.hide();
+    },
+    onNewGame: () => {
+      void saveStore.reset().then(() => {
+        const target = new URL(window.location.href);
+        target.search = '';
+        target.searchParams.set('autostart', '1');
+        target.searchParams.set('seed', String(Math.floor(Math.random() * 2_000_000_000) + 1));
+        window.location.href = target.toString();
+      });
+    },
+    onCoop: (search) => {
+      const target = new URL(window.location.href);
+      target.search = '';
+      search.forEach((value, key) => target.searchParams.set(key, value));
+      window.location.href = target.toString();
+    },
+  });
+  if (menuOpen) startMenu.show();
 
   const shop = createShop(shopRoot, {
     world,
@@ -109,10 +139,22 @@ async function bootstrap(): Promise<void> {
 
   world.bus.on('ui:notice', (payload) => hud.notify(payload.text, payload.kind === 'info' ? 'info' : 'warn'));
   world.bus.on('player:levelup', (payload) => hud.levelUp(payload.level));
-  world.bus.on('player:hurt', () => hud.hurtFlash());
-  world.bus.on('boss:phase', () => hud.notify('灰烬领主进入狂暴', 'warn'));
+  world.bus.on('player:hurt', (payload) => {
+    hud.hurtFlash();
+    camera.kick(Math.min(15, 4 + payload.amount * 0.35), 0.22);
+    hitstop = Math.max(hitstop, 0.055);
+  });
+  world.bus.on('boss:phase', () => {
+    hud.notify('首领进入狂暴', 'warn');
+    camera.kick(16, 0.32);
+    hitstop = Math.max(hitstop, 0.11);
+  });
   world.bus.on('boss:defeated', (payload) => hud.notify(`${payload.name} 被击败`, 'info'));
   world.bus.on('biome:enter', (payload) => hud.notify(`进入 ${payload.name}`, 'info'));
+  world.bus.on('skill:cast', (payload) => {
+    if (payload.tier === 'power' || payload.tier === 'ultimate') camera.kick(5, 0.16);
+  });
+  world.bus.on('player:dodge', () => camera.kick(3, 0.12));
   hookAudio(audio, world);
   const saveHandle = setupSave(saveStore, world, audio, hud);
   const net = await setupNet(world, render.layers, hudRoot);
@@ -181,11 +223,28 @@ async function bootstrap(): Promise<void> {
   // 无 GPU（Canvas 2D 软渲染）时关闭背景模糊，保住 60fps；有 GPU 时保留完整亚克力
   if (backend === 'CANVAS 2D') document.body.classList.add('perf-lite');
   let prevRight = false;
+  let hitstop = 0;
 
   const tick = (dt: number): void => {
     if (keyboard.wasPressed('Escape')) {
       if (shop.isOpen()) shop.close();
-      if (camp.isUpgradeOpen()) camp.closeUpgrade();
+      else if (camp.isUpgradeOpen()) camp.closeUpgrade();
+      else if (menuOpen) {
+        menuOpen = false;
+        startMenu.hide();
+      } else if (!net?.active) {
+        menuOpen = true;
+        startMenu.show(true);
+      }
+    }
+    if (menuOpen) {
+      keyboard.endStep();
+      return;
+    }
+    if (hitstop > 0) {
+      hitstop = Math.max(0, hitstop - dt);
+      keyboard.endStep();
+      return;
     }
     if (keyboard.wasPressed('Tab')) shop.toggle();
     if (!net?.active && (shop.isOpen() || camp.isUpgradeOpen())) {
@@ -342,6 +401,7 @@ async function bootstrap(): Promise<void> {
     save: saveStore,
     net,
     touch,
+    startMenu,
     debug: installDebug(world, playerId),
   };
 

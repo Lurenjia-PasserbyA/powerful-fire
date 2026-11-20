@@ -10,8 +10,8 @@
     "maxFrameSeconds": 0.25
   },
   "world": {
-    "width": 5000,
-    "height": 5000,
+    "width": 9000,
+    "height": 7000,
     "chunkSize": 512,
     "preloadChunks": 2,
     "gridSpacing": 128
@@ -34,7 +34,7 @@
     "ultimateChargePerKill": 0.02
   },
   "camera": {
-    "followLerp": 0.12,
+    "followLerp": 0.14,
     "zoom": 1
   },
   "aim": {
@@ -101,7 +101,7 @@
     "refreshHz": 12
   },
   "debug": {
-    "decorCount": 260,
+    "decorCount": 340,
     "showGrid": true,
     "showAimPreview": true
   },
@@ -109,10 +109,10 @@
     "interval": 3.4,
     "waveBase": 2,
     "wavePerLevel": 0.8,
-    "maxAlive": 28,
-    "spawnMinDistance": 640,
-    "spawnMaxDistance": 980,
-    "despawnDistance": 1700,
+    "maxAlive": 34,
+    "spawnMinDistance": 380,
+    "spawnMaxDistance": 820,
+    "despawnDistance": 1500,
     "aggroDistance": 900
   },
   "economy": {

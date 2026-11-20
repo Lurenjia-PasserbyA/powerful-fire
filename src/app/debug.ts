@@ -5,6 +5,7 @@ import type { GameWorld } from '../sim/world';
 export interface DebugHandle {
   spawnEnemy: (x: number, y: number) => void;
   spawnBoss: (x: number, y: number) => void;
+  spawnType: (type: string, x: number, y: number) => void;
   stress: (enemies: number, projectiles: number) => void;
   addXp: (amount: number) => void;
   giveUltimate: () => void;
@@ -18,6 +19,7 @@ export function installDebug(world: GameWorld, playerId: number): DebugHandle {
   return {
     spawnEnemy: (x, y) => spawnEnemy(world, 'ashwalker', x, y),
     spawnBoss: (x, y) => spawnEnemy(world, 'ashlord', x, y),
+    spawnType: (type, x, y) => spawnEnemy(world, type, x, y),
     stress: (enemies, projectiles) => {
       const center = { x: 1400, y: 1200 };
       // 压测前清场，保证指标对应「120 敌 + 400 弹」而非累加

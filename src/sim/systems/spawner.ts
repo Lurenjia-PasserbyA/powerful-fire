@@ -21,8 +21,13 @@ export function spawnerSystem(world: GameWorld, dt: number): void {
     const cfg = world.config.spawner;
     world.spawnTimer = cfg.interval;
     world.wave += 1;
-    const arenaBossAlive = [...world.enemies.keys()].some((id) => world.enemies.get(id)?.type === 'ashlord');
-    if (world.wave % 6 === 0 && !arenaBossAlive && !world.progress.defeatedBosses.has('ashlord') && player.level >= 3) {
+    const biome = biomeDef(biomeAtSafe(playerTransform));
+    const bossType = biome.id === 'crystal' ? 'crystal_warden' : 'ashlord';
+    const bossAlive = [...world.enemies.keys()].some((id) => {
+      const type = world.enemies.get(id)?.type;
+      return type === 'ashlord' || type === 'crystal_warden';
+    });
+    if (world.wave % 6 === 0 && !bossAlive && !world.progress.defeatedBosses.has(bossType) && player.level >= 3) {
       const angle = world.rng.float(0, Math.PI * 2);
       const bossPos = clampToBounds(
         { x: playerTransform.x + Math.cos(angle) * 360, y: playerTransform.y + Math.sin(angle) * 360 },
@@ -31,8 +36,11 @@ export function spawnerSystem(world: GameWorld, dt: number): void {
         world.bounds.y,
       );
       if (!isInBase(world, bossPos, 120)) {
-        spawnEnemy(world, 'ashlord', bossPos.x, bossPos.y);
-        world.bus.emit('ui:notice', { text: '灰烬领主降临', kind: 'warn' });
+        spawnEnemy(world, bossType, bossPos.x, bossPos.y);
+        world.bus.emit('ui:notice', {
+          text: bossType === 'crystal_warden' ? '晶核守望者苏醒' : '灰烬领主降临',
+          kind: 'warn',
+        });
       }
     }
     const alive = world.enemies.size;

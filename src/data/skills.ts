@@ -26,7 +26,11 @@ export type BehaviorId =
   | 'ult_rain'
   | 'ult_baguettes'
   | 'ult_overdrive'
-  | 'ult_phoenix';
+  | 'ult_phoenix'
+  | 'shotgun'
+  | 'spear'
+  | 'beam'
+  | 'ult_supernova';
 
 /** 数值字段全部可选，具体行为只读自己需要的字段；缺省值由行为层决定。 */
 export interface SkillData {

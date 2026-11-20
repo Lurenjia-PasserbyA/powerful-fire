@@ -70,6 +70,11 @@ test('health and discovery API', async (t) => {
   assert.equal(servers.servers.length, 1);
   assert.match(servers.servers[0].ws, /^ws:\/\//);
 
+  const network = await (await fetch(`${base}/api/network`)).json();
+  assert.equal(network.port, new URL(base).port ? Number(new URL(base).port) : 8787);
+  assert.ok(Array.isArray(network.addresses));
+  assert.match(network.suggestedUrl, /^http:\/\//);
+
   const rooms = await (await fetch(`${base}/api/rooms`)).json();
   assert.deepEqual(rooms.rooms, []);
   assert.equal(rooms.roomCount, 0);

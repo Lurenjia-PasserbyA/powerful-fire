@@ -17,6 +17,7 @@
 | 健康检查 | `GET /health` 返回版本、协议、房间数、玩家数、uptime |
 | 房间发现 | `GET /api/rooms?joinable=1` 返回房间码、人数、容量、群系、波次 |
 | 服务器发现 | `GET /api/servers` 返回自身与 `PF_ADVERTISE` 对等服务器 |
+| 局域网地址 | `GET /api/network` 返回本机非回环 IPv4 与推荐地址，开始菜单据此预填 |
 | 客户端配置 | `GET /api/config` 返回协议版本、人数上限、快照/输入频率 |
 | 房间生命周期 | 房主断线保留 10s，空房 15min 回收，客户端断线令牌保留 45s |
 | 容量控制 | 默认房主 + 3 客机 = 4 人；第 5 人收到 `room-full` |

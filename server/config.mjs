@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 function packageVersion(root) {
   try {
-    return JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version ?? '1.0.1';
+    return JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version ?? '1.1.0';
   } catch {
     return '1.0.1';
   }

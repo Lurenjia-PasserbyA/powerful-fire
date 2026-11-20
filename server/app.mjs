@@ -5,6 +5,7 @@
  * 服务器不参与游戏模拟：浏览器房主仍是唯一权威端，服务器只维护房间与转发。
  */
 import http from 'node:http';
+import { networkInterfaces } from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -254,6 +255,22 @@ export function createPfServer(overrides = {}) {
         rooms: registry.stats().rooms,
         players: registry.stats().players,
         region: cfg.region,
+      }, headers);
+      return;
+    }
+
+    if (pathname === '/api/network') {
+      const addresses = Object.values(networkInterfaces())
+        .flat()
+        .filter((item) => item && item.family === 'IPv4' && !item.internal)
+        .map((item) => item.address);
+      const hostPort = Number((req.headers.host ?? '').split(':').pop());
+      const displayPort = cfg.port || (Number.isFinite(hostPort) ? hostPort : 8787);
+      json(res, 200, {
+        addresses,
+        suggestedUrl: addresses.length > 0 ? `http://${addresses[0]}:${displayPort}` : `http://localhost:${displayPort}`,
+        lan: addresses.length > 0,
+        port: displayPort,
       }, headers);
       return;
     }

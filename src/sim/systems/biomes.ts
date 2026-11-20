@@ -18,8 +18,8 @@ export function biomeSystem(world: GameWorld, dt: number): void {
     const biome = biomeAtSafe(transform);
     player.biome = biome;
     const hazard = hazardAt(transform, biome);
-    player.envSlow = hazard?.kind === 'fog' ? hazard.slow ?? 1 : 1;
-    if (applyHazardDamage && hazard?.kind === 'lava' && hazard.dps) {
+    player.envSlow = hazard?.kind === 'fog' || hazard?.kind === 'crystal' ? hazard.slow ?? 1 : 1;
+    if (applyHazardDamage && (hazard?.kind === 'lava' || hazard?.kind === 'crystal') && hazard.dps) {
       damagePlayer(world, hazard.dps * 0.5, id);
     }
   }

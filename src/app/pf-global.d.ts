@@ -5,6 +5,7 @@ import type { DebugHandle } from './debug';
 import type { AudioBus } from '../audio/audiobus';
 import type { SaveManager } from '../save/manager';
 import type { TouchController } from '../ui/touch';
+import type { StartMenu } from '../ui/start-menu';
 
 declare global {
   interface Window {
@@ -20,6 +21,7 @@ declare global {
       save: SaveManager;
       net?: unknown;
       touch: TouchController;
+      startMenu: StartMenu;
       camp: {
         openUpgrade(): void;
         closeUpgrade(): void;

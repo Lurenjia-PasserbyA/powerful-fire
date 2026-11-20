@@ -1,18 +1,25 @@
-# Powerful Fire — v1.0.1（正式服务器 / 三生物群系 / 双摇杆触控 / 四端应用）
+# Powerful Fire — v1.1.0（38 技能 / 16 敌人 / 五群系 / 开始菜单 / 局域网联机）
 
 > 2D 俯视角火系动作 RPG，TypeScript strict + Pixi.js v8 + Vite。
-> M1–M8 已全部交付；v1.0.1 在 v1.0.0 基础上修复移动端实机反馈：**右半屏第二摇杆瞄准、全屏无黑边、HUD 独立缩放、大招默认可用、触屏状态条与控件重排**，并重打 Windows/Linux/macOS/Android 应用包。
+> v1.1.0 在 v1.0.1 基础上做内容与体验扩量：**38 个技能、16 种敌人、9000×7000 五群系世界、开始/暂停菜单、WebSocket + BroadcastChannel 联机入口、扁平科技风 UI、镜头冲击与移动加速手感**，并重打 Windows/Linux/macOS/Android 应用包。
 
-## v1.0.x 功能与修复
+## v1.1.0 更新
 
-- **正式服务器**：`server/` 提供静态托管、`/health`、`/api/config`、`/api/rooms`、`/api/servers`、`/api/stats` 与 `/ws` 房间协议 v2；房间码 2–8 位、容量 1+3、64KB 限包、240 msg/s 限流、20s 心跳、房主断线 10s 宽限、客机 45s 重连令牌、空房 15min 回收。含 Dockerfile / compose / systemd / Nginx TLS 文档。
-- **多连接方式**：HUD「⇄」联机大厅提供「本机 BroadcastChannel / 直连地址 / 服务器发现」三 Tab，可探测延迟、浏览公开房间、复用最近服务器、复制邀请链接；URL 参数 `net=host|join|client|server` 向后兼容。
-- **三生物群系**：灰烬荒原（ember）、焦木林（grove，雾区减速 0.62）、熔岩裂谷（rift，岩浆圈 9 DPS）；区域标题、危害圈、群系色块、跨群系提示与对应敌人池（emberling / thornhusk / cinderling / magmaw / lavaback）。
-- **双摇杆触控**：左半屏移动摇杆、右半屏浮动瞄准摇杆（按下出现、拖动定方向、松手停火）、自动开火开关、大号闪避/大招、HP/体力双状态条、槽位按钮、震动反馈、竖屏提示；自动开火时 20° 锥形辅助瞄准最近敌人。
-- **全屏适配**：视口按屏幕比例扩展逻辑画布，无 letterbox 黑边；HUD 独立缩放（0.95–1.18），触屏隐藏重复的 HUD 状态面板，商店/自动开火移到左侧信息栏下方。
-- **大招修复**：默认装配 `ult_firesky`，旧存档迁移自动补发；触屏大招按钮显示充能百分比，未装备时点击直接打开商店。
-- **发布说明**：`docs/RELEASE-v1.0.1.md`（修复项、验收记录、已知限制），历史版本见 `docs/RELEASE-v1.0.0.md`。
+- **内容扩量**：技能从 24 扩到 **38**（新增霰弹、贯穿矛、瞬发射线、超新星等 14 个）；敌人从 7 扩到 **16**（冲锋、远程预警、召唤、自爆四类 AI + 晶核守望者 Boss），每种敌人拥有独立几何剪影。
+- **世界扩量**：地图从 5000×5000 扩到 **9000×7000（63km²）**；群系从 3 扩到 **5**：灰烬荒原、焦木林、蓝晶回廊（晶尘伤害+减速）、熔岩裂谷、大火山口（12 DPS 熔流）；新增 8 个可导航地标，小地图显示群系色块与地标点。
+- **开始菜单**：进入游戏前的行动面板（继续/新档/联机/操作说明、存档等级与击杀、5 群系/38 技能/16 敌人/63km² 情报、服务端在线状态），同时作为 Esc 暂停菜单；`net` 或 `autostart=1` 参数会跳过菜单。
+- **联机入口**：菜单内可填呼号、房间码，选择「本机同浏览器 / 局域网服务器 / 直连 WS」；`/api/network` 自动探测本机局域网地址并预填，创建/加入直接进入联机局；联机中 Esc 不再暂停房主模拟。
+- **扁平科技风 UI**：深蓝黑底、青色数据边、直角切角面板、扫描线、等宽数据标签；触屏闪避/大招改为右下横排，避开小地图；38 卡商店在短屏横屏改为单行筛选 + 四列密集网格。
+- **手感强化**：受击/大招/首领转阶段加入镜头冲击，受击与首领转阶段加入 55–110ms 命中停顿；移动起步/转向改为 24/s 指数加速，闪避保持瞬时。
+- **发布说明**：`docs/RELEASE-v1.1.0.md`（内容清单、验收记录、已知限制），历史版本见 `docs/RELEASE-v1.0.1.md`。
 - **应用包**：Electron 桌面壳内置随机端口 HTTP 托管 `dist/`，产出 Windows x64、Linux x64、macOS x64/arm64 zip；Capacitor Android 工程产出 debug APK。
+
+## 正式服务器与联机
+
+- `server/` 提供静态托管、`/health`、`/api/network`、`/api/config`、`/api/rooms`、`/api/servers`、`/api/stats` 与 `/ws` 房间协议 v2；房间码 2–8 位、容量 1+3、64KB 限包、240 msg/s 限流、20s 心跳、房主断线 10s 宽限、客机 45s 重连令牌、空房 15min 回收。含 Dockerfile / compose / systemd / Nginx TLS 文档。
+- **多连接方式**：开始菜单与 HUD「⇄」联机大厅均支持「本机 BroadcastChannel / 局域网服务器 / 直连 WS」；可探测延迟、浏览公开房间、复用最近服务器、复制邀请链接；URL 参数 `net=host|join|client|server` 向后兼容。
+- **双摇杆触控**：左半屏移动摇杆、右半屏浮动瞄准摇杆（按下出现、拖动定方向、松手停火）、自动开火开关、闪避/大招、HP/体力双状态条、槽位按钮、震动反馈、竖屏提示；自动开火时 20° 锥形辅助瞄准最近敌人。
+- **全屏适配**：视口按屏幕比例扩展逻辑画布，无 letterbox 黑边；HUD 独立缩放（0.95–1.18），触屏隐藏重复的 HUD 状态面板。
 
 ## 运行
 
@@ -59,8 +66,8 @@ pnpm android:apk    # Gradle assembleDebug → android/app/build/outputs/apk/deb
 
 | 文件 | 内容 |
 | --- | --- |
-| `src/data/skills.json` | 24 个技能：法棍 4 / 热武器 5 / 火球 4 / 法术 7 / 大招 4，字段含冷却、前摇、伤害、行为与全部可选机制参数 |
-| `src/data/enemies.json` | 焦炭行者：HP 46、速度 115、半径 17、接触伤害 12、前摇 0.45s、XP 12、击退抗性 0.3 |
+| `src/data/skills.json` | **38 个技能**：法棍 9 / 热武器 9 / 火球 9 / 法术 8 / 大招 5，字段含冷却、前摇、伤害、行为与全部可选机制参数 |
+| `src/data/enemies.json` | **16 种敌人**：7 种基础怪 + 9 种新增怪（冲锋/远程/召唤/自爆/重甲）+ 双 Boss；含 role、preferredRange、summonType、dashSpeed、explodeRadius 等 AI 字段 |
 | `src/data/config.json` | 新增 `player.dodge`、`ultimateChargePerDamage/Kill`、`spawner`、`economy`、`combat`（点燃/易燃/熔蚀/过热/超载）、`startLoadout` |
 
 ### 战斗（M2）
@@ -89,7 +96,7 @@ pnpm android:apk    # Gradle assembleDebug → android/app/build/outputs/apk/deb
 ### M3 初步
 
 - `src/sim/systems/casting.ts`：滚轮/数字切槽（120ms ease-out 过渡）、前摇计时、冷却校验、大招充能释放、过热锁定（100% 锁、降到 45% 解锁）、超载期零冷却。
-- `src/ui/shop.ts`：24 张技能卡、系别筛选、价格排序、已购态、购买扣单一 XP、装备到槽 1/2/3 或大招位、提示条；打开即暂停逻辑。
+- `src/ui/shop.ts`：38 张技能卡、系别筛选、价格排序、已购态、购买扣单一 XP、装备到槽 1/2/3 或大招位、提示条；打开即暂停逻辑。
 - HUD：血条 + 护盾条、三槽冷却扇形遮罩、大招充能百分比与就绪高亮、状态芯片（过热/虚弱/护盾/XP）、WAVE / KILL 计数。
 
 ### 触屏

@@ -2,7 +2,7 @@ import { requireSkill, skillDataById, type SkillData } from '../data/skills';
 import type { Behavior, CastContext } from '../sim/runtime';
 import { castBoomerang, castMark, castMeleeArc } from './behaviors/baguette';
 import { castFlamethrower, castLobPool, castMinigun, castNailgun, castRocket } from './behaviors/heatgun';
-import { castChain, castFireball, castGhost, castSplit } from './behaviors/projectile';
+import { castChain, castFireball, castGhost, castShotgun, castSpear, castSplit } from './behaviors/projectile';
 import {
   castDash,
   castMeteor,
@@ -11,8 +11,9 @@ import {
   castShield,
   castSpikes,
   castWall,
+  castBeam,
 } from './behaviors/sorcery';
-import { castUltBaguettes, castUltOverdrive, castUltPhoenix, castUltRain } from './behaviors/ultimate';
+import { castUltBaguettes, castUltOverdrive, castUltPhoenix, castUltRain, castUltSupernova } from './behaviors/ultimate';
 
 /** 第 12 节契约：SkillDef.fire(ctx) 由行为实现绑定，数据与实现分离。 */
 export interface SkillDef {
@@ -44,6 +45,10 @@ const behaviorTable: Record<SkillData['behavior'], Behavior> = {
   ult_baguettes: castUltBaguettes,
   ult_overdrive: castUltOverdrive,
   ult_phoenix: castUltPhoenix,
+  shotgun: castShotgun,
+  spear: castSpear,
+  beam: castBeam,
+  ult_supernova: castUltSupernova,
 };
 
 export function buildRegistry(): Map<string, SkillDef> {

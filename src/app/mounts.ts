@@ -6,6 +6,7 @@ export interface Mounts {
   fxRoot: HTMLElement;
   campPromptRoot: HTMLElement;
   upgradeRoot: HTMLElement;
+  menuRoot: HTMLElement;
   boot: HTMLElement | null;
 }
 
@@ -18,9 +19,10 @@ export function collectMounts(): Mounts {
   const fxRoot = document.getElementById('fx');
   const campPromptRoot = document.getElementById('camp-prompt');
   const upgradeRoot = document.getElementById('upgrade');
+  const menuRoot = document.getElementById('start-menu');
   const boot = document.getElementById('boot');
-  if (!stage || !hudRoot || !shopRoot || !touchRoot || !fxRoot || !campPromptRoot || !upgradeRoot) {
+  if (!stage || !hudRoot || !shopRoot || !touchRoot || !fxRoot || !campPromptRoot || !upgradeRoot || !menuRoot) {
     throw new Error('缺少挂载点');
   }
-  return { stage, hudRoot, shopRoot, touchRoot, fxRoot, campPromptRoot, upgradeRoot, boot };
+  return { stage, hudRoot, shopRoot, touchRoot, fxRoot, campPromptRoot, upgradeRoot, menuRoot, boot };
 }

@@ -2,6 +2,7 @@ import type { Area } from '../runtime';
 import type { GameWorld } from '../world';
 import { applyDamage, applyKnockback } from './damage';
 import { circleDamage, playerSnapshot } from '../../skills/helpers';
+import { damagePlayer } from './damage';
 
 const TICK_INTERVAL = 0.25;
 
@@ -35,19 +36,17 @@ export function areaSystem(world: GameWorld, dt: number): void {
 }
 
 function activate(world: GameWorld, area: Area): void {
-  if (area.kind === 'meteor') {
-    circleDamage(world, { x: area.x, y: area.y }, area.radius, area.damage, {
-      ignite: area.ignite,
-      knockback: 160,
-      fromPlayer: true,
-      kind: 'explosion',
-    });
-    area.applied = true;
-  } else if (area.kind === 'pillar') {
-    circleDamage(world, { x: area.x, y: area.y }, area.radius, area.damage, {
-      ignite: area.ignite,
-      fromPlayer: true,
-    });
+  if (area.kind === 'meteor' || area.kind === 'pillar') {
+    if (area.hostile) {
+      hostileCircle(world, area);
+    } else {
+      circleDamage(world, { x: area.x, y: area.y }, area.radius, area.damage, {
+        ignite: area.ignite,
+        knockback: area.kind === 'meteor' ? 160 : 0,
+        fromPlayer: true,
+        kind: area.kind === 'meteor' ? 'explosion' : 'hit',
+      });
+    }
     area.applied = true;
   } else if (area.kind === 'rain') {
     const player = playerSnapshot(world);
@@ -59,6 +58,15 @@ function activate(world: GameWorld, area: Area): void {
 }
 
 function tickDamage(world: GameWorld, area: Area, interval: number): void {
+  if (area.hostile) {
+    for (const id of world.players.keys()) {
+      const t = world.transforms.get(id);
+      const m = world.movements.get(id);
+      if (!t || !m) continue;
+      if (insideCircle(t, area, m.radius)) damagePlayer(world, area.dps * interval, id);
+    }
+    return;
+  }
   if (area.kind === 'rain') {
     const player = playerSnapshot(world);
     if (player) {
@@ -110,4 +118,16 @@ function insideRotatedRect(point: { x: number; y: number }, area: Area, radius: 
   const along = dx * cos - dy * sin;
   const across = dx * sin + dy * cos;
   return Math.abs(along) <= area.length / 2 + radius && Math.abs(across) <= area.width / 2 + radius;
+}
+
+
+function hostileCircle(world: GameWorld, area: Area): void {
+  for (const id of world.players.keys()) {
+    const t = world.transforms.get(id);
+    const m = world.movements.get(id);
+    if (!t || !m) continue;
+    if (Math.hypot(t.x - area.x, t.y - area.y) <= area.radius + m.radius) {
+      damagePlayer(world, area.damage, id);
+    }
+  }
 }

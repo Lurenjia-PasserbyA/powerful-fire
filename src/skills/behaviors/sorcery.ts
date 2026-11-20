@@ -171,3 +171,38 @@ function pointSegmentDistance(point: { x: number; y: number }, a: { x: number; y
   const dy = a.y + aby * t - point.y;
   return Math.hypot(dx, dy);
 }
+
+/** 射线：瞬发直线伤害，用于熔切/阳炎/灰烬虹吸。 */
+export function castBeam(ctx: CastContext, data: SkillData): void {
+  const { world, origin, aim } = ctx;
+  const angle = Math.atan2(aim.y - origin.y, aim.x - origin.x);
+  const length = data.length ?? 420;
+  const width = data.width ?? 26;
+  spawnArea(world, {
+    kind: 'beam',
+    x: origin.x + Math.cos(angle) * length / 2,
+    y: origin.y + Math.sin(angle) * length / 2,
+    angle,
+    length,
+    width,
+    life: 0.24,
+  });
+  const end = { x: origin.x + Math.cos(angle) * length, y: origin.y + Math.sin(angle) * length };
+  for (const id of world.enemies.keys()) {
+    const t = world.transforms.get(id);
+    const m = world.movements.get(id);
+    if (!t || !m) continue;
+    if (pointSegmentDistance(t, origin, end) > width / 2 + m.radius) continue;
+    applyDamage(world, id, data.damage, {
+      ignite: data.ignite,
+      fromPlayer: true,
+      kind: 'burn',
+      dir: { x: Math.cos(angle), y: Math.sin(angle) },
+    });
+  }
+  if (data.heal && data.heal > 0) {
+    const id = world.playerId;
+    const player = id !== null ? world.players.get(id) : undefined;
+    if (player) player.hp = Math.min(player.maxHp, player.hp + data.heal);
+  }
+}

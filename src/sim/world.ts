@@ -162,6 +162,7 @@ function makeArea(): Area {
     damage: 0,
     applied: false,
     delay: 0,
+    hostile: false,
   };
 }
 

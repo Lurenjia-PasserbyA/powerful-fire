@@ -12,6 +12,9 @@ export class Camera {
   prevX: number;
   prevY: number;
   readonly zoom: number;
+  private shakeAmp = 0;
+  private shakeLeft = 0;
+  private shakePhase = 0;
 
   constructor(
     private readonly viewport: Viewport,
@@ -33,7 +36,16 @@ export class Camera {
     return this.viewport.logicalHeight / this.zoom;
   }
 
+  /** 受击/爆发时的短促镜头冲击，不改变逻辑相机坐标。 */
+  kick(strength: number, duration = 0.2): void {
+    this.shakeAmp = Math.max(this.shakeAmp, strength);
+    this.shakeLeft = Math.max(this.shakeLeft, duration);
+  }
+
   update(dt: number, target: Vec2, followLerp: number, worldSize: Vec2): void {
+    this.shakePhase += dt * 52;
+    this.shakeLeft = Math.max(0, this.shakeLeft - dt);
+    if (this.shakeLeft <= 0) this.shakeAmp = 0;
     this.prevX = this.x;
     this.prevY = this.y;
 
@@ -67,6 +79,12 @@ export class Camera {
   }
 
   renderPosition(alpha: number): Vec2 {
-    return { x: lerp(this.prevX, this.x, alpha), y: lerp(this.prevY, this.y, alpha) };
+    const base = { x: lerp(this.prevX, this.x, alpha), y: lerp(this.prevY, this.y, alpha) };
+    if (this.shakeAmp <= 0) return base;
+    const falloff = Math.min(1, this.shakeLeft * 8);
+    return {
+      x: base.x + Math.sin(this.shakePhase * 1.7) * this.shakeAmp * falloff,
+      y: base.y + Math.cos(this.shakePhase * 2.3) * this.shakeAmp * falloff * 0.7,
+    };
   }
 }

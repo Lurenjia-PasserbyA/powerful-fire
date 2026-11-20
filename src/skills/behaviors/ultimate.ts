@@ -11,7 +11,7 @@ export function castUltRain(ctx: CastContext, data: SkillData): void {
     kind: 'rain',
     x: center.x,
     y: center.y,
-    radius: 720,
+    radius: data.radius ?? 720,
     life: data.duration ?? 6,
     dps: data.dps ?? 34,
     ignite: 2,
@@ -92,4 +92,25 @@ export function castUltPhoenix(ctx: CastContext, data: SkillData): void {
     knockback: 320,
     kind: 'explosion',
   });
+}
+
+/** 超新星：以玩家为中心的大范围爆发，给予短时护盾。 */
+export function castUltSupernova(ctx: CastContext, data: SkillData): void {
+  const { world } = ctx;
+  const id = world.playerId;
+  if (id === null) return;
+  const player = world.players.get(id);
+  const transform = world.transforms.get(id);
+  if (!player || !transform) return;
+  const radius = data.radius ?? 520;
+  spawnArea(world, { kind: 'telegraph', x: transform.x, y: transform.y, radius, life: 0.7 });
+  circleDamage(world, transform, radius, data.damage, {
+    fromPlayer: true,
+    ignite: data.ignite,
+    knockback: 420,
+    kind: 'explosion',
+  });
+  player.shield = Math.max(player.shield, data.shield ?? 60);
+  player.shieldTimer = Math.max(player.shieldTimer, 5);
+  player.invulnerable = Math.max(player.invulnerable, 0.8);
 }

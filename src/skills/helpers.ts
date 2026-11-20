@@ -85,6 +85,7 @@ export interface AreaOptions {
   ignite?: number;
   damage?: number;
   delay?: number;
+  hostile?: boolean;
 }
 
 export function spawnArea(world: GameWorld, opts: AreaOptions): Area | null {
@@ -105,6 +106,7 @@ export function spawnArea(world: GameWorld, opts: AreaOptions): Area | null {
   a.damage = opts.damage ?? 0;
   a.applied = false;
   a.delay = opts.delay ?? 0;
+  a.hostile = opts.hostile ?? false;
   world.areas.push(a);
   return a;
 }

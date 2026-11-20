@@ -73,8 +73,10 @@ function updatePlayer(world: GameWorld, id: EntityId, dt: number): void {
       player.staminaDelay = staminaCfg.regenDelay;
     }
     const speed = movement.speed * (sprinting ? staminaCfg.sprintMultiplier : 1);
-    velocity.x = input.move.x * speed;
-    velocity.y = input.move.y * speed;
+    // 起步/转向带短促加速，避免瞬间折返的“纸片手感”；闪避仍然瞬时。
+    const accel = 1 - Math.exp(-24 * dt);
+    velocity.x += (input.move.x * speed - velocity.x) * accel;
+    velocity.y += (input.move.y * speed - velocity.y) * accel;
   }
 
   if (!hasInput && player.dodgeTimer <= 0) {

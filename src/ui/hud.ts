@@ -1,3 +1,5 @@
+import { BIOMES, LANDMARKS, ZONES } from '../data/biomes';
+
 export interface SlotSnapshot {
   name: string;
   cooldown: number;
@@ -59,6 +61,31 @@ export function createHud(root: HTMLElement): Hud {
   const xpValue = requireEl('hud-xp-value');
   const xpFill = requireEl('hud-xp-fill');
   const mapPlayer = requireEl('hud-map-player');
+  const mapRoot = mapPlayer.parentElement;
+  if (mapRoot) {
+    for (const zone of ZONES) {
+      if (zone.id === 'ember') continue;
+      const def = BIOMES[zone.id];
+      const el = document.createElement('span');
+      el.className = 'map__zone';
+      el.style.left = `${(zone.x / 9000) * 100}%`;
+      el.style.top = `${(zone.y / 7000) * 100}%`;
+      el.style.width = `${(zone.width / 9000) * 100}%`;
+      el.style.height = `${(zone.height / 7000) * 100}%`;
+      el.style.borderColor = `#${def.accent.toString(16).padStart(6, '0')}`;
+      el.style.background = `#${def.accent.toString(16).padStart(6, '0')}`;
+      el.title = def.name;
+      mapRoot.appendChild(el);
+    }
+    for (const mark of LANDMARKS) {
+      const el = document.createElement('span');
+      el.className = 'map__mark';
+      el.style.left = `${(mark.x / 9000) * 100}%`;
+      el.style.top = `${(mark.y / 7000) * 100}%`;
+      el.title = mark.name;
+      mapRoot.appendChild(el);
+    }
+  }
   const waveLabel = requireEl('hud-wave');
   const hpValue = requireEl('hud-hp-value');
   const hpFill = requireEl('hud-hp-fill');

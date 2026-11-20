@@ -33,10 +33,12 @@ export function buildSnapshot(
   let boss: HudSnapshot['boss'] = null;
   for (const id of world.enemies.keys()) {
     const enemy = world.enemies.get(id);
-    if (!enemy || enemy.type !== 'ashlord') continue;
+    if (!enemy) continue;
+    const data = enemyData(enemy.type);
+    if (!data.boss) continue;
     const health = world.healths.get(id);
     if (!health) continue;
-    boss = { name: enemyData('ashlord').name, ratio: health.hp / Math.max(1, health.maxHp) };
+    boss = { name: data.name, ratio: health.hp / Math.max(1, health.maxHp) };
     break;
   }
 
