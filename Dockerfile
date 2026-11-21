@@ -3,6 +3,7 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PF_PORT=8787 \
     PF_HOST=0.0.0.0 \
+    PF_GUI=0 \
     PF_STATIC=0
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
