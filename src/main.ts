@@ -44,9 +44,10 @@ async function bootstrap(): Promise<void> {
   const hud = createHud(hudRoot);
   const { audio } = setupAudio(hudRoot, (volumes, muted) => saveStore.setSettings(volumes, muted));
   saveStore.applySettings(loadedSave);
+  let hudScale = 1;
   const render = await createRenderApp(stage, config, (viewport) => {
     // HUD 独立于世界视口缩放：手机上保持可读字号，桌面端限制最大倍率避免过大。
-    const hudScale = Math.min(1.18, Math.max(0.95, viewport.scale));
+    hudScale = Math.min(1.18, Math.max(0.95, viewport.scale));
     hudRoot.style.left = '0px';
     hudRoot.style.top = '0px';
     hudRoot.style.width = `${viewport.cssWidth / hudScale}px`;
@@ -392,7 +393,7 @@ async function bootstrap(): Promise<void> {
     worldRenderer.sync(world, alpha);
     effects.update(frameSeconds, world);
     net?.sync();
-    floating.sync(world, camera);
+    floating.sync(world, camera, viewport.scale / hudScale);
     crosshair.update(viewport.toLogical(pointer.screen), pointer.inside && !touchMode, frameSeconds);
     audio.update(frameSeconds, combatHeat(world, playerId));
 

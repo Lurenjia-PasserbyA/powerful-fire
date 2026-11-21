@@ -12,12 +12,17 @@ export class FloatingTextLayer {
 
   constructor(private readonly root: HTMLElement) {}
 
-  sync(world: GameWorld, camera: Camera): void {
+  /**
+   * HUD 使用「CSS 像素 / hudScale」作为本地坐标系，而相机换算结果是逻辑坐标；
+   * 两者之间需要补上 viewport.scale / hudScale，否则伤害数字会随窗口比例偏移。
+   */
+  sync(world: GameWorld, camera: Camera, hudToLogicalScale = 1): void {
     this.used = 0;
     for (const number of world.numbers) {
       if (!number.active) continue;
       const slot = this.obtain();
-      const pos = camera.toLogical({ x: number.x, y: number.y });
+      const logical = camera.toLogical({ x: number.x, y: number.y });
+      const pos = { x: logical.x * hudToLogicalScale, y: logical.y * hudToLogicalScale };
       const k = number.maxLife > 0 ? Math.max(0, number.life / number.maxLife) : 0;
       slot.el.style.transform = `translate(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px) translate(-50%, -50%) scale(${(
         1 + (1 - k) * 0.25
