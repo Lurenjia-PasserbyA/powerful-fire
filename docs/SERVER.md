@@ -23,24 +23,44 @@
 | 容量控制 | 默认房主 + 3 客机 = 4 人；第 5 人收到 `room-full` |
 | 心跳 | 20s WebSocket ping/pong，失活连接自动清理 |
 | 限流/限包 | 64KB 最大消息、单连接 240 msg/s、昵称/房间码校验 |
+| Web 控制台 | `--gui` 启用 `/console`；实时房间、连接数、事件日志、关闭房间；`--nogui` 关闭 |
 
 ## 启动
 
 ```bash
 pnpm install
 pnpm build                 # 产出 dist/
-pnpm server                # http://0.0.0.0:8787 + ws://…/ws
+pnpm server                # http://0.0.0.0:8787 + ws://…/ws（默认 nogui）
 # 或
 PF_PORT=9000 PF_REGION=cn-east pnpm server
+# 带 Web 控制台（本机默认可直接访问）
+pnpm server -- --gui
+# 远程控制台：设置 token 后访问 /console?token=xxx
+PF_CONSOLE_TOKEN=change-me pnpm server -- --gui
 ```
 
 无 `dist/` 时服务器仍可运行，只提供 API 与 WebSocket。
+
+### 控制台参数
+
+| 参数 | 说明 |
+| --- | --- |
+| `--gui` | 启用 `/console` 与 `/api/admin/*` |
+| `--nogui` | 关闭控制台（默认） |
+| `--port=8787` | 覆盖端口 |
+| `--host=0.0.0.0` | 覆盖监听地址 |
+| `--static=0` | 关闭静态客户端 |
+| `--console-token=xxx` | 设置控制台 token |
+
+未设置 `PF_CONSOLE_TOKEN` 时，控制台和管理 API 只接受本机回环请求；公网部署必须设置 token。
 
 ## 环境变量
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
 | `PF_PORT` / `PORT` | `8787` | HTTP + WS 端口 |
+| `PF_GUI` | `0` | `1` 等同 `--gui`，启用 Web 控制台 |
+| `PF_CONSOLE_TOKEN` | 空 | 控制台与管理 API 的访问令牌；为空时仅允许本机 |
 | `PF_HOST` | `0.0.0.0` | 监听地址 |
 | `PF_PROTOCOL` | `2` | 协议版本，不匹配直接关闭连接 |
 | `PF_MAX_CLIENTS` | `3` | 客机上限（1–3），总人数 +1 |

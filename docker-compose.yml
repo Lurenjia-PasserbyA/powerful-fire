@@ -1,13 +1,15 @@
 services:
   powerful-fire:
     build: .
-    image: powerful-fire:1.0.0
+    image: powerful-fire:1.2.1
     container_name: powerful-fire
     restart: unless-stopped
     ports:
       - "8787:8787"
     environment:
       PF_PORT: "8787"
+      PF_GUI: "${PF_GUI:-0}"
+      PF_CONSOLE_TOKEN: "${PF_CONSOLE_TOKEN:-}"
       PF_REGION: "local"
       PF_SERVER_NAME: "Powerful Fire Server"
       PF_MAX_CLIENTS: "3"

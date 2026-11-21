@@ -15,6 +15,8 @@ import { loadConfig } from './config.mjs';
 const ROOM_CODE = /^[A-Z0-9_-]{2,8}$/;
 const MAX_NAME = 12;
 const MAX_MESSAGE_BYTES = 64 * 1024;
+const CONSOLE_FILE = new URL('./console.html', import.meta.url);
+let consoleHtml = null;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -115,21 +117,66 @@ export class RoomRegistry {
     return { rooms: this.rooms.size, players };
   }
 
-  /** 清理超时房间、过期重连令牌。 */
+  /** 管理控制台使用的完整房间快照（不含 token / socket）。 */
+  snapshot() {
+    return [...this.rooms.values()].map((room) => ({
+      code: room.code,
+      host: room.hostName || null,
+      players: (room.host ? 1 : 0) + room.clients.size,
+      capacity: 1 + this.maxClients,
+      joinable: Boolean(room.host) && room.clients.size < this.maxClients && room.host.readyState === 1,
+      biome: room.meta?.biome ?? 'ember',
+      wave: room.meta?.wave ?? 0,
+      mode: room.meta?.mode ?? 'coop',
+      ageMs: Date.now() - room.createdAt,
+      hostSince: room.hostSince,
+      updatedAt: room.updatedAt,
+      clients: [...room.clients.values()].map((client) => ({
+        id: client.id,
+        name: client.name,
+        joinedAt: client.joinedAt,
+      })),
+    })).sort((a, b) => b.players - a.players || a.code.localeCompare(b.code));
+  }
+
+  /** 清理超时房间、过期重连令牌；返回被清理的房间码。 */
   sweep(now = Date.now()) {
+    const removed = [];
     for (const [code, room] of this.rooms) {
       for (const [token, record] of room.reconnects) {
         if (record.expiresAt <= now) room.reconnects.delete(token);
       }
       if (!room.host && room.hostExpiresAt > 0 && room.hostExpiresAt <= now) {
+        removed.push(code);
         this.remove(code);
         continue;
       }
       if (room.host && now - room.updatedAt > this.roomTtlMs && room.clients.size === 0) {
+        removed.push(code);
         this.remove(code);
       }
     }
+    return removed;
   }
+}
+
+function isLoopback(req) {
+  const address = req.socket?.remoteAddress ?? '';
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+}
+
+function sameToken(a, b) {
+  const left = Buffer.from(String(a ?? ''));
+  const right = Buffer.from(String(b ?? ''));
+  return left.length > 0 && left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function consoleAllowed(req, url, cfg) {
+  if (!cfg.gui) return false;
+  if (cfg.consoleToken) {
+    return sameToken(req.headers['x-pf-console-token'], cfg.consoleToken) || sameToken(url.searchParams.get('token'), cfg.consoleToken);
+  }
+  return isLoopback(req);
 }
 
 function json(res, status, body, extraHeaders = {}) {
@@ -147,7 +194,7 @@ function cors(cfg) {
   return {
     'Access-Control-Allow-Origin': cfg.corsOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-PF-Console-Token',
   };
 }
 
@@ -233,6 +280,14 @@ export function createPfServer(overrides = {}) {
   const registry = new RoomRegistry({ maxClients: cfg.maxClients, maxRooms: cfg.maxRooms });
   const startedAt = Date.now();
   const visitor = { total: 0 };
+  const events = [];
+
+  function record(type, message, room = '') {
+    events.push({ at: Date.now(), type, message, room });
+    if (events.length > 200) events.shift();
+  }
+
+  record('server', `server v${cfg.version} started · gui=${cfg.gui ? 'on' : 'off'}`);
 
   const httpServer = http.createServer((req, res) => {
     const headers = cors(cfg);
@@ -338,6 +393,81 @@ export function createPfServer(overrides = {}) {
       return;
     }
 
+    // ---- Web 控制台（--gui 启用；未配置 token 时默认只允许本机） ----
+    if (pathname === '/console' || pathname === '/console/') {
+      if (!cfg.gui) {
+        json(res, 404, { error: 'console_disabled' }, headers);
+        return;
+      }
+      if (!consoleAllowed(req, url, cfg)) {
+        json(res, 401, { error: 'console_unauthorized', hint: 'set PF_CONSOLE_TOKEN or use ?token=' }, headers);
+        return;
+      }
+      if (!consoleHtml) {
+        try {
+          consoleHtml = fs.readFileSync(CONSOLE_FILE, 'utf8');
+        } catch {
+          json(res, 500, { error: 'console_missing' }, headers);
+          return;
+        }
+      }
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      res.end(consoleHtml);
+      return;
+    }
+
+    if (pathname.startsWith('/api/admin/')) {
+      if (!cfg.gui) {
+        json(res, 404, { error: 'console_disabled' }, headers);
+        return;
+      }
+      if (!consoleAllowed(req, url, cfg)) {
+        json(res, 401, { error: 'console_unauthorized', hint: 'set PF_CONSOLE_TOKEN or use ?token=' }, headers);
+        return;
+      }
+      if (pathname === '/api/admin/status' && req.method === 'GET') {
+        json(res, 200, {
+          ok: true,
+          version: cfg.version,
+          protocol: cfg.protocol,
+          region: cfg.region,
+          gui: cfg.gui,
+          tokenRequired: Boolean(cfg.consoleToken),
+          staticDir: cfg.staticDir,
+          maxPlayers: 1 + cfg.maxClients,
+          uptimeMs: Date.now() - startedAt,
+          players: registry.stats().players,
+          connections: visitor.total,
+          currentConnections: wss.clients.size,
+          rooms: registry.snapshot(),
+        }, headers);
+        return;
+      }
+      if (pathname === '/api/admin/events' && req.method === 'GET') {
+        json(res, 200, { events }, headers);
+        return;
+      }
+      const closeRoom = pathname.match(/^\/api\/admin\/rooms\/([^/]+)\/close$/);
+      if (closeRoom && req.method === 'POST') {
+        const code = normalizeCode(decodeURIComponent(closeRoom[1]));
+        if (!code || !registry.get(code)) {
+          json(res, 404, { error: 'room_not_found' }, headers);
+          return;
+        }
+        registry.remove(code);
+        record('admin', '房间被控制台关闭', code);
+        json(res, 200, { ok: true, room: code }, headers);
+        return;
+      }
+      json(res, 404, { error: 'admin_route_not_found' }, headers);
+      return;
+    }
+
     if (serveStatic(req, res, pathname, cfg)) return;
 
     if (pathname === '/' || pathname === '/index.html') {
@@ -348,7 +478,9 @@ export function createPfServer(overrides = {}) {
 <h1>Powerful Fire Server</h1>
 <p>服务在线 · 协议 v${cfg.protocol} · 房间 ${registry.stats().rooms} · 玩家 ${registry.stats().players}</p>
 <p><code>/health</code> · <code>/api/rooms</code> · <code>/api/servers</code></p>
-<p>把 <code>dist/</code> 构建产物放在服务器目录即可同源托管客户端。</p></body></html>`);
+<p>把 <code>dist/</code> 构建产物放在服务器目录即可同源托管客户端。</p>
+${cfg.gui ? '<p><a style="color:#ff6b35" href="/console">打开 Web 控制台 →</a></p>' : '<p style="color:#8d8498">Web 控制台未启用；使用 --gui 启动。</p>'}
+</body></html>`);
       return;
     }
 
@@ -456,17 +588,19 @@ export function createPfServer(overrides = {}) {
       if (!room) return;
       if (socket.pf.role === 'host' && room.host === socket) {
         room.host = null;
+        record('host', `${socket.pf.name} 断线，房间进入宽限`, code);
         room.hostExpiresAt = Date.now() + cfg.hostGraceMs;
         for (const client of room.clients.values()) {
           sendEnvelope(client.socket, 'server', { type: 'host-left' });
         }
       } else if (socket.pf.role === 'client' && socket.pf.id) {
-        const record = room.clients.get(socket.pf.id);
+        const clientRecord = room.clients.get(socket.pf.id);
+        record('client', `${socket.pf.name} 离开房间`, code);
         room.clients.delete(socket.pf.id);
-        if (record) {
-          room.reconnects.set(record.token, {
-            id: record.id,
-            name: record.name,
+        if (clientRecord) {
+          room.reconnects.set(clientRecord.token, {
+            id: clientRecord.id,
+            name: clientRecord.name,
             expiresAt: Date.now() + cfg.reconnectMs,
           });
         }
@@ -493,6 +627,7 @@ export function createPfServer(overrides = {}) {
       sendEnvelope(socket, 'server', { type: 'register-error', code: 'bad-room' });
       return;
     }
+    const existed = Boolean(registry.get(code));
     const room = registry.ensure(code);
     if (!room) {
       sendEnvelope(socket, 'server', { type: 'register-error', code: 'server-full' });
@@ -509,6 +644,8 @@ export function createPfServer(overrides = {}) {
         return;
       }
       socket.pf = { ...socket.pf, room: code, role: 'host', name };
+      if (!existed) record('room', '房间创建', code);
+      record('host', `${name} 成为房主`, code);
       room.host = socket;
       room.hostName = name;
       room.hostToken = room.hostToken ?? token();
@@ -540,6 +677,7 @@ export function createPfServer(overrides = {}) {
     const clientToken = reconnectToken && reconnect ? reconnectToken : token();
     socket.pf = { ...socket.pf, room: code, role: 'client', id, name };
     room.clients.set(id, { socket, id, name, token: clientToken, joinedAt: Date.now() });
+    record('client', `${name} 加入房间`, code);
     room.updatedAt = Date.now();
     sendEnvelope(socket, 'server', {
       type: 'register-ok',
@@ -553,7 +691,7 @@ export function createPfServer(overrides = {}) {
   }
 
   const heartbeat = setInterval(() => {
-    registry.sweep();
+    for (const code of registry.sweep()) record('room', '空房过期回收', code);
     for (const socket of wss.clients) {
       if (!socket.isAlive) {
         socket.terminate();

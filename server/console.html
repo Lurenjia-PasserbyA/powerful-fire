@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Powerful Fire · Server Console</title>
+<style>
+:root{--bg:#08070c;--panel:#111019;--line:#2c2638;--text:#f2e9e4;--muted:#8d8498;--fire:#ff6b35;--ember:#ffb347;--cyan:#5ef2ff;--ok:#72e6a6;--warn:#ffd166;--bad:#ff5a6e}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 20% 0%,#1a1020 0,#08070c 42%),var(--bg);color:var(--text);font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:100vh}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 4px);opacity:.4}
+.wrap{max-width:1240px;margin:0 auto;padding:26px 20px 44px;position:relative}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--fire);color:var(--fire);font-weight:800;letter-spacing:-1px}
+.brand h1{margin:0;font-size:20px;letter-spacing:.12em}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:11px;letter-spacing:.16em}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);color:var(--muted);font-size:11px;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--bad);box-shadow:0 0 10px currentColor}
+.dot.on{background:var(--ok);color:var(--ok)}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button,input{font:inherit;color:var(--text);background:#171421;border:1px solid var(--line);padding:8px 11px;outline:none}
+button{cursor:pointer;transition:.15s}
+button:hover{border-color:var(--fire);color:var(--fire)}
+button.primary{background:var(--fire);border-color:var(--fire);color:#120b08;font-weight:700}
+button.danger{border-color:#5c2731;color:#ff9aa7}
+button.danger:hover{border-color:var(--bad);color:var(--bad)}
+input{min-width:180px}
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:18px}
+.card{background:linear-gradient(145deg,rgba(255,255,255,.03),transparent 80%),var(--panel);border:1px solid var(--line);padding:14px 16px;position:relative;overflow:hidden}
+.card:after{content:"";position:absolute;right:-20px;top:-20px;width:54px;height:54px;border:1px solid rgba(255,107,53,.22);transform:rotate(45deg)}
+.card b{display:block;font-size:24px;line-height:1.2;color:var(--ember);margin-top:4px}
+.card span{color:var(--muted);font-size:10px;letter-spacing:.16em;text-transform:uppercase}
+.section{margin-top:26px}
+.section h2{font-size:12px;letter-spacing:.18em;color:var(--cyan);margin:0 0 10px;font-weight:600}
+.panel{background:var(--panel);border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid rgba(44,38,56,.65);vertical-align:middle}
+th{font-size:10px;letter-spacing:.12em;color:var(--muted);font-weight:500;background:#0d0c13}
+td{font-size:12px}
+tr:last-child td{border-bottom:0}
+.code{color:var(--ember);font-weight:700;letter-spacing:.08em}
+.tag{display:inline-block;padding:2px 6px;border:1px solid var(--line);font-size:10px;color:var(--muted)}
+.tag.ok{color:var(--ok);border-color:#244d39}.tag.warn{color:var(--warn);border-color:#534522}.tag.bad{color:var(--bad);border-color:#5a2830}
+.empty{py:28px;padding:28px;text-align:center;color:var(--muted);font-size:12px}
+.layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.55fr);gap:14px}
+.log{height:360px;overflow:auto;padding:4px 0;font-size:11px}
+.log-row{display:grid;grid-template-columns:70px 78px 1fr;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(44,38,56,.4)}
+.log-row time{color:var(--muted)}.log-row em{font-style:normal;color:var(--cyan);overflow:hidden;text-overflow:ellipsis}.log-row span{color:#c8bfd2}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;padding:12px 14px;font-size:11px}
+.kv b{color:var(--muted);font-weight:400}.kv span{color:var(--text);word-break:break-all}
+.foot{margin-top:18px;color:var(--muted);font-size:10px;display:flex;justify-content:space-between;gap:10px}
+.tokenbar{margin-top:14px;padding:10px 12px;border:1px solid #534522;background:#17130c;color:var(--warn);font-size:12px;display:none;align-items:center;gap:10px;flex-wrap:wrap}
+.tokenbar.on{display:flex}
+.toast{position:fixed;right:20px;bottom:20px;background:#171421;border:1px solid var(--fire);padding:10px 14px;color:var(--ember);opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none}
+.toast.on{opacity:1;transform:none}
+@media(max-width:860px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}.log{height:240px}.wrap{padding:18px 12px 30px}table{font-size:11px}th:nth-child(4),td:nth-child(4){display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><div class="logo">PF</div><div><h1>POWERFUL FIRE</h1><p>SERVER CONSOLE // ROOM RELAY</p></div></div>
+    <div class="actions">
+      <span class="pill"><i class="dot" id="dot"></i><span id="link">连接中</span></span>
+      <button id="refresh">刷新</button>
+      <button id="auto" class="primary">自动: 开</button>
+    </div>
+  </header>
+
+  <div class="tokenbar" id="tokenbar">
+    <span>控制台需要访问令牌（PF_CONSOLE_TOKEN）</span>
+    <input id="token" type="password" placeholder="输入 console token">
+    <button class="primary" id="saveToken">保存</button>
+  </div>
+
+  <div class="grid">
+    <div class="card"><span>Uptime</span><b id="uptime">--</b></div>
+    <div class="card"><span>Rooms</span><b id="rooms">--</b></div>
+    <div class="card"><span>Players</span><b id="players">--</b></div>
+    <div class="card"><span>Connections</span><b id="connections">--</b></div>
+    <div class="card"><span>Version</span><b id="version">--</b></div>
+  </div>
+
+  <div class="section">
+    <h2>// ROOMS</h2>
+    <div class="panel"><table>
+      <thead><tr><th>ROOM</th><th>HOST</th><th>PLAYERS</th><th>BIOME / WAVE</th><th>AGE</th><th>STATE</th><th></th></tr></thead>
+      <tbody id="roomRows"><tr><td colspan="7" class="empty">暂无房间</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <div class="section layout">
+    <div>
+      <h2>// EVENT LOG</h2>
+      <div class="panel log" id="log"><div class="empty">等待事件…</div></div>
+    </div>
+    <div>
+      <h2>// SERVER</h2>
+      <div class="panel"><div class="kv" id="config"><b>状态</b><span>--</span></div></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Powerful Fire dedicated server · loopback 或 token 保护</span><span id="clock"></span></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const saved = localStorage.getItem('pf-console-token') || '';
+  let token = params.get('token') || saved;
+  if (params.get('token')) localStorage.setItem('pf-console-token', token);
+  let auto = true;
+  let timer = null;
+
+  const headers = () => token ? { 'X-PF-Console-Token': token } : {};
+  async function api(path, options = {}) {
+    const res = await fetch(path, { cache: 'no-store', ...options, headers: { ...headers(), ...(options.headers || {}) } });
+    if (res.status === 401) { $('tokenbar').classList.add('on'); throw new Error('unauthorized'); }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+  function toast(text) {
+    const el = $('toast'); el.textContent = text; el.classList.add('on');
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1800);
+  }
+  function dur(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+    return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m ? m + 'm ' + x + 's' : x + 's';
+  }
+  function esc(text) { const d = document.createElement('div'); d.textContent = String(text ?? ''); return d.innerHTML; }
+  function setLink(on) { $('dot').classList.toggle('on', on); $('link').textContent = on ? 'ONLINE' : 'OFFLINE'; }
+
+  function renderStatus(s) {
+    $('uptime').textContent = dur(s.uptimeMs);
+    $('rooms').textContent = s.rooms.length;
+    $('players').textContent = s.players;
+    $('connections').textContent = s.connections;
+    $('version').textContent = 'v' + s.version;
+    $('config').innerHTML =
+      '<b>version</b><span>' + esc(s.version) + '</span>' +
+      '<b>protocol</b><span>v' + esc(s.protocol) + '</span>' +
+      '<b>region</b><span>' + esc(s.region) + '</span>' +
+      '<b>gui</b><span>' + (s.gui ? 'enabled' : 'disabled') + '</span>' +
+      '<b>token</b><span>' + (s.tokenRequired ? 'required' : 'loopback only') + '</span>' +
+      '<b>max players</b><span>' + esc(s.maxPlayers) + '</span>' +
+      '<b>static</b><span>' + esc(s.staticDir || 'disabled') + '</span>';
+    const rows = s.rooms || [];
+    if (!rows.length) { $('roomRows').innerHTML = '<tr><td colspan="7" class="empty">暂无房间</td></tr>'; return; }
+    $('roomRows').innerHTML = rows.map((r) => {
+      const state = r.joinable ? '<span class="tag ok">JOINABLE</span>' : r.host ? '<span class="tag warn">FULL</span>' : '<span class="tag bad">NO HOST</span>';
+      return '<tr><td class="code">' + esc(r.code) + '</td><td>' + esc(r.host || '-') + '</td><td>' + r.players + ' / ' + r.capacity +
+        '</td><td>' + esc(r.biome) + ' / W' + esc(r.wave) + '</td><td>' + dur(r.ageMs) + '</td><td>' + state +
+        '</td><td><button class="danger" data-close="' + esc(r.code) + '">关闭</button></td></tr>';
+    }).join('');
+  }
+  function renderLog(events) {
+    if (!events.length) { $('log').innerHTML = '<div class="empty">等待事件…</div>'; return; }
+    $('log').innerHTML = events.slice().reverse().map((e) => {
+      const t = new Date(e.at).toLocaleTimeString('zh-CN', { hour12: false });
+      return '<div class="log-row"><time>' + t + '</time><em>' + esc(e.room || e.type) + '</em><span>' + esc(e.message) + '</span></div>';
+    }).join('');
+  }
+  async function refresh() {
+    try {
+      const [s, e] = await Promise.all([api('/api/admin/status'), api('/api/admin/events')]);
+      renderStatus(s); renderLog(e.events || []); setLink(true);
+    } catch (error) { setLink(false); if (error.message !== 'unauthorized') toast('控制台连接失败: ' + error.message); }
+  }
+  function schedule() { clearInterval(timer); if (auto) timer = setInterval(refresh, 2000); }
+
+  $('refresh').onclick = refresh;
+  $('auto').onclick = () => { auto = !auto; $('auto').textContent = '自动: ' + (auto ? '开' : '关'); $('auto').classList.toggle('primary', auto); schedule(); };
+  $('saveToken').onclick = () => { token = $('token').value.trim(); localStorage.setItem('pf-console-token', token); $('tokenbar').classList.remove('on'); refresh(); };
+  $('roomRows').addEventListener('click', async (event) => {
+    const code = event.target?.dataset?.close;
+    if (!code || !confirm('关闭房间 ' + code + '？所有连接会被断开。')) return;
+    try { await api('/api/admin/rooms/' + encodeURIComponent(code) + '/close', { method: 'POST' }); toast('已关闭 ' + code); refresh(); }
+    catch (error) { toast('关闭失败: ' + error.message); }
+  });
+  $('clock').textContent = new Date().toLocaleString('zh-CN', { hour12: false });
+  refresh(); schedule();
+})();
+</script>
+</body>
+</html>

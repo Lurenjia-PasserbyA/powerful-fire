@@ -27,6 +27,8 @@ export function loadConfig(env = process.env, root = process.cwd()) {
     heartbeatMs: Math.max(5_000, int(env.PF_HEARTBEAT_MS, 20_000)),
     staticDir: env.PF_STATIC === '0' ? null : path.resolve(root, env.PF_STATIC ?? 'dist'),
     corsOrigin: env.PF_CORS_ORIGIN ?? '*',
+    gui: env.PF_GUI === undefined ? false : env.PF_GUI !== '0' && env.PF_GUI !== 'false',
+    consoleToken: env.PF_CONSOLE_TOKEN ?? '',
     version: env.PF_VERSION ?? packageVersion(root),
     region: env.PF_REGION ?? 'local',
     advertise: (env.PF_ADVERTISE ?? '')

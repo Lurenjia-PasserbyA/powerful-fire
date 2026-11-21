@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 import { createPfServer } from '../app.mjs';
 
-async function boot() {
+async function boot(overrides = {}) {
   const server = createPfServer({
     port: 0,
     host: '127.0.0.1',
@@ -11,6 +11,9 @@ async function boot() {
     maxClients: 3,
     staticDir: null,
     version: 'test',
+    gui: false,
+    consoleToken: '',
+    ...overrides,
   });
   await server.start();
   const port = server.address().port;
@@ -146,4 +149,34 @@ test('reconnect token restores the same client id', async (t) => {
   const second = await register(ws, { role: 'lan-client', room: 'RC', name: 'Guest', token });
   assert.equal(second.msg.data.type, 'register-ok');
   assert.equal(second.msg.data.id, first.msg.data.id);
+});
+
+test('nogui disables console and admin routes', async (t) => {
+  const { server, base } = await boot({ gui: false });
+  t.after(() => server.stop());
+  assert.equal((await fetch(`${base}/console`)).status, 404);
+  assert.equal((await fetch(`${base}/api/admin/status`)).status, 404);
+});
+
+test('gui console requires token and can close rooms', async (t) => {
+  const { server, base, ws } = await boot({ gui: true, consoleToken: 'test-token' });
+  t.after(() => server.stop());
+  assert.equal((await fetch(`${base}/console`)).status, 401);
+  assert.equal((await fetch(`${base}/console`, { headers: { 'X-PF-Console-Token': 'test-token' } })).status, 200);
+  assert.equal((await fetch(`${base}/api/admin/status`)).status, 401);
+  const status = await fetch(`${base}/api/admin/status`, { headers: { 'X-PF-Console-Token': 'test-token' } });
+  assert.equal(status.status, 200);
+  const payload = await status.json();
+  assert.equal(payload.gui, true);
+  assert.equal(payload.tokenRequired, true);
+
+  const host = await register(ws, { role: 'lan-host', room: 'GUI', name: 'Host' });
+  assert.equal(host.msg.data.type, 'register-ok');
+  const close = await fetch(`${base}/api/admin/rooms/GUI/close`, {
+    method: 'POST',
+    headers: { 'X-PF-Console-Token': 'test-token' },
+  });
+  assert.equal(close.status, 200);
+  assert.equal((await close.json()).ok, true);
+  assert.equal(server.registry.get('GUI'), null);
 });
