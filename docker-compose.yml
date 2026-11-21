@@ -1,0 +1,20 @@
+services:
+  powerful-fire-server:
+    build: .
+    image: powerful-fire-server:1.2.1
+    container_name: powerful-fire-server
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      PF_PORT: "8787"
+      PF_REGION: "local"
+      PF_SERVER_NAME: "Powerful Fire Server"
+      PF_MAX_CLIENTS: "3"
+      PF_ROOM_TTL_MS: "900000"
+      PF_CORS_ORIGIN: "*"
+      PF_STATIC: "0"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
