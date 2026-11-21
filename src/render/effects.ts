@@ -17,7 +17,7 @@ interface Particle {
   streak: boolean;
 }
 
-const MAX_PARTICLES = 420;
+const MAX_PARTICLES = 480;
 const GLOW_SIZE = 64;
 
 function canvasTexture(draw: (ctx: CanvasRenderingContext2D, size: number) => void, width = 64, height = 64): Texture {
@@ -173,12 +173,12 @@ export class EffectLayer {
     const distance = 15;
     const mx = x + Math.cos(angle) * distance;
     const my = y + Math.sin(angle) * distance;
-    this.burst(mx, my, color, 5, 130 * strength, 5.5 * strength, 0.18, 0.7, angle);
+    this.burst(mx, my, color, 6, 145 * strength, 6.2 * strength, 0.18, 0.78, angle);
     this.spawn('glow', mx, my, {
       vx: Math.cos(angle) * 35,
       vy: Math.sin(angle) * 35,
       life: 0.14,
-      size0: 24 * strength,
+      size0: 28 * strength,
       size1: 4,
       color: 0xfff8e8,
       alpha: 0.8,
@@ -190,8 +190,8 @@ export class EffectLayer {
       vx: 0,
       vy: 0,
       life: 0.24,
-      size0: 10,
-      size1: 30 * strength,
+      size0: 12,
+      size1: 34 * strength,
       color,
       alpha: 0.25,
       drag: 2,
@@ -201,8 +201,8 @@ export class EffectLayer {
   }
 
   impact(x: number, y: number, color: number, amount = 10): void {
-    this.burst(x, y, 0xfff3d0, 5, 150 + amount * 2.2, 3.2, 0.24);
-    this.burst(x, y, color, 3, 90, 2.1, 0.28);
+    this.burst(x, y, 0xfff3d0, 6, 160 + amount * 2.4, 3.7, 0.25);
+    this.burst(x, y, color, 4, 100, 2.4, 0.29);
     this.spawn('glow', x, y, {
       vx: 0,
       vy: 0,
@@ -215,12 +215,12 @@ export class EffectLayer {
       spin: 0,
       fade: 1.4,
     });
-    if (amount >= 55) this.shockwave(x, y, 26 + amount * 0.8, color, 0.28);
+    if (amount >= 50) this.shockwave(x, y, 28 + amount * 0.9, color, 0.29);
   }
 
   explosion(x: number, y: number, radius: number, color: number, power = 1): void {
-    this.burst(x, y, color, Math.min(34, 12 + Math.round(radius * 0.12)), 120 + radius * 1.5, 6 * power, 0.6);
-    this.burst(x, y, 0xfff3d0, 4, 220 * power, 4, 0.25);
+    this.burst(x, y, color, Math.min(38, 14 + Math.round(radius * 0.12)), 128 + radius * 1.5, 6.5 * power, 0.62);
+    this.burst(x, y, 0xfff3d0, 5, 230 * power, 4.5, 0.26);
     this.shockwave(x, y, radius, color, 0.46);
     this.spawn('glow', x, y, {
       vx: 0,
@@ -265,7 +265,7 @@ export class EffectLayer {
       const speed = velocity ? Math.hypot(velocity.x, velocity.y) : 0;
       if (transform && speed > 90) {
         this.playerTrail += dt;
-        if (this.playerTrail >= 0.045 && this.particles.length < 330) {
+        if (this.playerTrail >= 0.045 && this.particles.length < 380) {
           this.playerTrail = 0;
           const angle = Math.atan2(velocity?.y ?? 0, velocity?.x ?? 0);
           this.spawn('glow', transform.x - Math.cos(angle) * 12, transform.y - Math.sin(angle) * 12, {
@@ -285,7 +285,7 @@ export class EffectLayer {
     }
 
     this.enemyTrail += dt;
-    if (this.enemyTrail >= 0.075 && this.particles.length < 310) {
+    if (this.enemyTrail >= 0.075 && this.particles.length < 360) {
       this.enemyTrail = 0;
       let emitted = 0;
       for (const id of world.enemies.keys()) {
@@ -311,7 +311,7 @@ export class EffectLayer {
     }
 
     this.projectileTrail += dt;
-    if (this.projectileTrail >= 0.018 && this.particles.length < 300) {
+    if (this.projectileTrail >= 0.018 && this.particles.length < 340) {
       this.projectileTrail = 0;
       let emitted = 0;
       for (const projectile of world.projectiles) {

@@ -165,18 +165,20 @@ async function bootstrap(): Promise<void> {
   world.bus.on('biome:enter', (payload) => hud.notify(`进入 ${payload.name}`, 'info'));
   world.bus.on('skill:cast', (payload) => {
     const automatic = payload.behavior === 'minigun';
+    const beam = payload.behavior === 'beam';
+    const shotgun = payload.behavior === 'shotgun';
     const kick =
-      payload.behavior === 'beam' ? 7.5
-      : payload.behavior === 'shotgun' ? 5
-      : automatic ? 0.9
-      : payload.tier === 'ultimate' ? 12
-      : payload.tier === 'power' ? 5
-      : 2.4;
-    if (!automatic && (payload.tier === 'power' || payload.tier === 'ultimate')) camera.kick(5, 0.16);
-    camera.recoil(payload.x - payload.aimX, payload.y - payload.aimY, kick, 0.16);
-    crosshair.kick(automatic ? 0.05 : payload.tier === 'ultimate' ? 0.26 : payload.tier === 'power' ? 0.16 : 0.08);
-    const color = payload.behavior === 'beam' ? 0x5ef2ff : payload.tier === 'ultimate' ? 0xff6b35 : 0xffd166;
-    const power = payload.tier === 'ultimate' ? 1.8 : payload.behavior === 'beam' ? 1.35 : automatic ? 0.7 : 1;
+      beam ? 9
+      : shotgun ? 6.5
+      : automatic ? 1.3
+      : payload.tier === 'ultimate' ? 16
+      : payload.tier === 'power' ? 6.5
+      : 3.2;
+    if (!automatic) camera.kick(beam ? 3.2 : shotgun ? 2.6 : payload.tier === 'ultimate' ? 8 : payload.tier === 'power' ? 2.4 : 1.5, 0.14);
+    camera.recoil(payload.x - payload.aimX, payload.y - payload.aimY, kick, 0.17);
+    crosshair.kick(automatic ? 0.07 : payload.tier === 'ultimate' ? 0.32 : payload.tier === 'power' ? 0.2 : 0.12);
+    const color = beam ? 0x5ef2ff : payload.tier === 'ultimate' ? 0xff6b35 : 0xffd166;
+    const power = payload.tier === 'ultimate' ? 2 : beam ? 1.5 : automatic ? 0.8 : 1.25;
     effects.muzzle(payload.x, payload.y, payload.aimX, payload.aimY, color, power);
   });
   world.bus.on('player:dodge', (payload) => {
@@ -187,15 +189,15 @@ async function bootstrap(): Promise<void> {
     if (payload.kind === 'burn') return;
     effects.impact(payload.x, payload.y, 0xffd28a, payload.amount);
     if (payload.amount >= 55) {
-      camera.kick(2.5, 0.12);
-      hitstop = Math.max(hitstop, 0.022);
+      camera.kick(3.1, 0.13);
+      hitstop = Math.max(hitstop, 0.032);
     }
   });
   world.bus.on('enemy:kill', (payload) => {
     const boss = payload.boss;
-    effects.explosion(payload.x, payload.y, boss ? 190 : 58, enemyFxColor(payload.type), boss ? 2.4 : 1);
-    camera.kick(boss ? 12 : 2.2, boss ? 0.34 : 0.12);
-    if (boss) hitstop = Math.max(hitstop, 0.07);
+    effects.explosion(payload.x, payload.y, boss ? 210 : 66, enemyFxColor(payload.type), boss ? 2.6 : 1.1);
+    camera.kick(boss ? 14 : 3.2, boss ? 0.36 : 0.13);
+    if (boss) hitstop = Math.max(hitstop, 0.09);
   });
   world.bus.on('fx:explosion', (payload) => {
     effects.explosion(payload.x, payload.y, payload.radius, 0xff8a3d, Math.min(2.2, 1 + payload.power * 0.4));

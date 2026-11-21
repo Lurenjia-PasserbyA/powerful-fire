@@ -32,7 +32,7 @@ export function createStartMenu(host: HTMLElement, options: StartMenuOptions): S
       <header class="start-menu__head">
         <div class="start-menu__brand">
           <span class="start-menu__glyph">PF</span>
-          <span><b>POWERFUL FIRE</b><small>EMBER PROTOCOL / v1.2.1</small></span>
+          <span><b>POWERFUL FIRE</b><small>EMBER PROTOCOL / v1.2.2</small></span>
         </div>
         <div class="start-menu__net" id="menu-net-status"><i></i><span>探测本地服务…</span></div>
       </header>
@@ -119,7 +119,7 @@ export function createStartMenu(host: HTMLElement, options: StartMenuOptions): S
       </section>
 
       <footer class="start-menu__foot">
-        <span>LOCAL BUILD // <b id="menu-build">1.2.1</b></span>
+        <span>LOCAL BUILD // <b id="menu-build">1.2.2</b></span>
         <span id="menu-foot-hint">选择行动开始</span>
       </footer>
     </div>
@@ -224,7 +224,7 @@ export function createStartMenu(host: HTMLElement, options: StartMenuOptions): S
       const data = (await response.json()) as { ok?: boolean; version?: string };
       if (!data.ok) throw new Error('offline');
       const status = host.querySelector<HTMLElement>('#menu-net-status');
-      if (status) status.innerHTML = `<i class="is-online"></i><span>LOCAL SERVER ONLINE · v${data.version ?? '1.2.1'}</span>`;
+      if (status) status.innerHTML = `<i class="is-online"></i><span>LOCAL SERVER ONLINE · v${data.version ?? '1.2.2'}</span>`;
       const foot = host.querySelector<HTMLElement>('#menu-foot-hint');
       if (foot) foot.textContent = '局域网服务已就绪';
     })
