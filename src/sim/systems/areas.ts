@@ -41,6 +41,7 @@ function activate(world: GameWorld, area: Area): void {
       hostileCircle(world, area);
     } else {
       circleDamage(world, { x: area.x, y: area.y }, area.radius, area.damage, {
+        ownerId: area.ownerId ?? null,
         ignite: area.ignite,
         knockback: area.kind === 'meteor' ? 160 : 0,
         fromPlayer: true,
@@ -49,10 +50,10 @@ function activate(world: GameWorld, area: Area): void {
     }
     area.applied = true;
   } else if (area.kind === 'rain') {
-    const player = playerSnapshot(world);
-    if (player) {
-      area.x = player.x;
-      area.y = player.y;
+    const anchor = areaOwnerPoint(world, area);
+    if (anchor) {
+      area.x = anchor.x;
+      area.y = anchor.y;
     }
   }
 }
@@ -68,10 +69,10 @@ function tickDamage(world: GameWorld, area: Area, interval: number): void {
     return;
   }
   if (area.kind === 'rain') {
-    const player = playerSnapshot(world);
-    if (player) {
-      area.x = player.x;
-      area.y = player.y;
+    const anchor = areaOwnerPoint(world, area);
+    if (anchor) {
+      area.x = anchor.x;
+      area.y = anchor.y;
     }
   }
 
@@ -87,6 +88,7 @@ function tickDamage(world: GameWorld, area: Area, interval: number): void {
     if (!inside) continue;
 
     applyDamage(world, id, area.dps * interval, {
+      ownerId: area.ownerId ?? null,
       ignite: area.ignite,
       fromPlayer: true,
       silent: true,
@@ -104,6 +106,14 @@ function tickDamage(world: GameWorld, area: Area, interval: number): void {
       );
     }
   }
+}
+
+function areaOwnerPoint(world: GameWorld, area: Area): { x: number; y: number } | null {
+  if (area.ownerId != null) {
+    const transform = world.transforms.get(area.ownerId);
+    if (transform) return { x: transform.x, y: transform.y };
+  }
+  return playerSnapshot(world);
 }
 
 function insideCircle(point: { x: number; y: number }, area: Area, radius: number): boolean {

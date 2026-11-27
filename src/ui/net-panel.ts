@@ -1,3 +1,5 @@
+import { storage } from '../core/storage';
+
 import {
   fetchRooms,
   fetchServers,
@@ -76,7 +78,7 @@ export function createNetPanel(host: HTMLElement): void {
         <button type="button" class="net-panel__tab" data-tab="direct">直连</button>
         <button type="button" class="net-panel__tab" data-tab="server">服务器</button>
       </div>
-      <label class="net-panel__field">昵称<input class="net-panel__input" data-role="name" maxlength="12" value="${escapeHtml(name || localStorage.getItem('pf.lastName') || 'Player')}" /></label>
+      <label class="net-panel__field">昵称<input class="net-panel__input" data-role="name" maxlength="12" value="${escapeHtml(name || storage.getItem('pf.lastName') || 'Player')}" /></label>
       <label class="net-panel__field">房间码
         <span class="net-panel__row">
           <input class="net-panel__input" data-role="room" maxlength="8" value="${escapeHtml(room)}" />
@@ -154,7 +156,7 @@ export function createNetPanel(host: HTMLElement): void {
     target.searchParams.set('room', trim(roomInput?.value, 8).toUpperCase() || 'PF');
     const playerName = trim(nameInput?.value, 12) || 'Player';
     target.searchParams.set('name', playerName);
-    localStorage.setItem('pf.lastName', playerName);
+    storage.setItem('pf.lastName', playerName);
     if (mode !== 'local') {
       const addr = trim(addrInput?.value, 200);
       if (!addr) {

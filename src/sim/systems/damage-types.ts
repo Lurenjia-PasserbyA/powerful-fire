@@ -10,4 +10,6 @@ export interface DamageOptions {
   dir?: Vec2;
   fromPlayer?: boolean;
   silent?: boolean;
+  /** 伤害归属玩家；缺省按主机本地玩家结算。 */
+  ownerId?: number | null;
 }

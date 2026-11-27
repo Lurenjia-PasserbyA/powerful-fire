@@ -1,6 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { RenderLayers } from './layers';
 import type { Snapshot } from '../net/protocol';
+import { enemyData } from '../data/enemies';
 
 interface Tracked {
   root: Container;
@@ -48,21 +49,22 @@ export class NetView {
       for (const enemy of snapshot.enemies) {
         const key = `e:${enemy.id}`;
         seen.add(key);
+        const boss = enemyData(enemy.type).boss === true;
         const color = enemy.state === 'windup' ? 0xff8a3d : enemy.state === 'chase' ? 0xff5c5c : 0x9aa4b2;
-        this.upsert(key, enemy.type, enemy.x, enemy.y, 15, 0, enemy.hp / Math.max(1, enemy.maxHp), color, now);
+        this.upsert(key, enemy.type, enemy.x, enemy.y, boss ? 30 : 15, 0, enemy.hp / Math.max(1, enemy.maxHp), color, now);
       }
-      snapshot.projectiles.forEach((projectile, index) => {
-        const key = `j:${index}`;
+      snapshot.projectiles.forEach((projectile) => {
+        const key = `j:${projectile.id}`;
         seen.add(key);
         this.upsert(key, `proj:${projectile.kind}`, projectile.x, projectile.y, 3.5, projectile.angle, 1, 0xffd166, now);
       });
-      snapshot.orbs.forEach((orb, index) => {
-        const key = `o:${index}`;
+      snapshot.orbs.forEach((orb) => {
+        const key = `o:${orb.id}`;
         seen.add(key);
         this.upsert(key, 'orb', orb.x, orb.y, 4, 0, 1, 0x7ef7c8, now);
       });
-      snapshot.areas.forEach((area, index) => {
-        const key = `a:${index}`;
+      snapshot.areas.forEach((area) => {
+        const key = `a:${area.id}`;
         seen.add(key);
         this.upsert(key, `area:${area.kind}`, area.x, area.y, Math.max(12, area.radius), area.angle, Math.max(0, area.life / Math.max(0.001, area.maxLife)), 0xff7a2f, now);
       });
@@ -151,9 +153,10 @@ export class NetView {
       this.drawBar(entry, 34);
       return;
     }
-    entry.body.circle(0, 0, 14).fill({ color: entry.color, alpha: 0.92 });
-    entry.body.circle(0, 0, 14).stroke({ color: 0x28140c, width: 2 });
-    this.drawBar(entry, 28);
+    const radius = entry.radius;
+    entry.body.circle(0, 0, radius).fill({ color: entry.color, alpha: 0.92 });
+    entry.body.circle(0, 0, radius).stroke({ color: 0x28140c, width: 2 });
+    this.drawBar(entry, radius * 2);
   }
 
   private drawBar(entry: Tracked, width: number): void {

@@ -4,8 +4,7 @@ import type { CastContext } from '../../sim/runtime';
 import { coneDamage, spawnArea, spawnProjectile } from '../helpers';
 
 function addOverheat(ctx: CastContext, amount: number): void {
-  const id = ctx.world.playerId;
-  if (id === null) return;
+  const id = ctx.caster;
   const player = ctx.world.players.get(id);
   if (!player) return;
   player.overheat = Math.min(100, player.overheat + amount);

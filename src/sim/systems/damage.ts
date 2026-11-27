@@ -43,14 +43,17 @@ export function applyDamage(
   if (!health || !statuses || !transform || health.hp <= 0) return 0;
 
   const corrodeBonus = options.kind === 'burn' ? 0 : 1 + Math.min(3, statuses.corroding) * 0.15;
-  const player = world.playerId !== null ? world.players.get(world.playerId) : undefined;
+  const ownerId = options.ownerId ?? world.activeOwner ?? world.playerId;
+  const player = ownerId !== null ? world.players.get(ownerId) : undefined;
   const overdriveBonus = options.fromPlayer && player && player.overdrive > 0 ? world.config.combat.overdriveDamageMult : 1;
   const upgradeBonus = options.fromPlayer && player ? player.damageMult : 1;
   const dealt = Math.max(1, amount * corrodeBonus * overdriveBonus * upgradeBonus);
   health.hp -= dealt;
+  if (ownerId !== null) health.lastHitBy = ownerId;
 
   if (options.ignite && options.ignite > 0) {
     statuses.burning = Math.max(statuses.burning, options.ignite);
+    if (options.fromPlayer && ownerId !== null) statuses.burnOwner = ownerId;
   }
   if (options.flammable && options.flammable > 0) {
     statuses.flammable = Math.min(5, statuses.flammable + options.flammable);
@@ -77,7 +80,7 @@ export function applyDamage(
 
   if (health.hp <= 0) {
     health.hp = 0;
-    if (world.enemies.has(targetId)) killEnemy(world, targetId, transform);
+    if (world.enemies.has(targetId)) killEnemy(world, targetId, transform, ownerId);
   }
   return dealt;
 }
@@ -123,7 +126,13 @@ export function damagePlayer(world: GameWorld, amount: number, targetId?: Entity
   }
 }
 
-export function killEnemy(world: GameWorld, id: EntityId, transform: { x: number; y: number }): void {
+export function killEnemy(
+  world: GameWorld,
+  id: EntityId,
+  transform: { x: number; y: number },
+  ownerId: EntityId | null = null,
+): void {
+  const creditedId = ownerId ?? world.healths.get(id)?.lastHitBy ?? world.playerId;
   const enemy = world.enemies.get(id);
   const data = enemy ? enemyData(enemy.type) : null;
   const xp = data?.xp ?? 10;
@@ -132,7 +141,7 @@ export function killEnemy(world: GameWorld, id: EntityId, transform: { x: number
     spawnOrb(world, transform.x, transform.y, xp / count);
   }
   world.progress.kills += 1;
-  const player = world.playerId !== null ? world.players.get(world.playerId) : undefined;
+  const player = creditedId !== null ? world.players.get(creditedId) : undefined;
   if (player) {
     player.kills += 1;
     player.ultimateCharge = Math.min(1, player.ultimateCharge + world.config.player.ultimateChargePerKill);

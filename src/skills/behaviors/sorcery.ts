@@ -61,8 +61,7 @@ export function castNova(ctx: CastContext, data: SkillData): void {
 /** 烈焰冲刺：瞬移到鼠标方向，路径上造成伤害并留下火池。 */
 export function castDash(ctx: CastContext, data: SkillData): void {
   const { world, origin, aim } = ctx;
-  const player = playerSnapshot(world);
-  if (!player) return;
+  const player = { id: ctx.caster, x: origin.x, y: origin.y };
   const distance = data.distance ?? 230;
   const angle = Math.atan2(aim.y - origin.y, aim.x - origin.x);
   const start = { x: player.x, y: player.y };
@@ -115,8 +114,7 @@ export function castDash(ctx: CastContext, data: SkillData): void {
 /** 火焰护盾：吸收伤害，受击溅射火星（火星结算在 damagePlayer 内）。 */
 export function castShield(ctx: CastContext, data: SkillData): void {
   const { world } = ctx;
-  const id = world.playerId;
-  if (id === null) return;
+  const id = ctx.caster;
   const player = world.players.get(id);
   if (!player) return;
   player.shield = Math.max(player.shield, data.shield ?? 80);
@@ -153,8 +151,7 @@ export function castSpikes(ctx: CastContext, data: SkillData): void {
 
 /** 凤凰之羽（被动）：装配后允许一次自动复活。 */
 export function castPassiveRevive(ctx: CastContext, data: SkillData): void {
-  const id = ctx.world.playerId;
-  if (id === null) return;
+  const id = ctx.caster;
   const player = ctx.world.players.get(id);
   if (player) player.reviveReady = true;
   void data;
@@ -201,8 +198,7 @@ export function castBeam(ctx: CastContext, data: SkillData): void {
     });
   }
   if (data.heal && data.heal > 0) {
-    const id = world.playerId;
-    const player = id !== null ? world.players.get(id) : undefined;
+    const player = world.players.get(ctx.caster);
     if (player) player.hp = Math.min(player.maxHp, player.hp + data.heal);
   }
 }

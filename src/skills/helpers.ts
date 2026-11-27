@@ -30,6 +30,7 @@ export interface ProjectileOptions {
   maxTravel?: number;
   scale?: number;
   spin?: number;
+  ownerId?: number | null;
 }
 
 export function spawnProjectile(world: GameWorld, opts: ProjectileOptions): Projectile | null {
@@ -68,6 +69,7 @@ export function spawnProjectile(world: GameWorld, opts: ProjectileOptions): Proj
   p.originX = opts.x;
   p.originY = opts.y;
   p.maxTravel = opts.maxTravel ?? 0;
+  p.ownerId = opts.ownerId ?? world.activeOwner ?? null;
   world.projectiles.push(p);
   return p;
 }
@@ -86,6 +88,7 @@ export interface AreaOptions {
   damage?: number;
   delay?: number;
   hostile?: boolean;
+  ownerId?: number | null;
 }
 
 export function spawnArea(world: GameWorld, opts: AreaOptions): Area | null {
@@ -107,6 +110,7 @@ export function spawnArea(world: GameWorld, opts: AreaOptions): Area | null {
   a.applied = false;
   a.delay = opts.delay ?? 0;
   a.hostile = opts.hostile ?? false;
+  a.ownerId = opts.ownerId ?? world.activeOwner ?? null;
   world.areas.push(a);
   return a;
 }
@@ -154,7 +158,11 @@ export function coneDamage(
     const diff = Math.abs(angleBetween(origin, t) - angleBetween(origin, aim));
     const wrapped = Math.min(diff, Math.PI * 2 - diff);
     if (wrapped > halfArc) continue;
-    applyDamage(world, id, damage, { ...options, dir: { x: t.x - origin.x, y: t.y - origin.y } });
+    applyDamage(world, id, damage, {
+      ...options,
+      ownerId: options.ownerId ?? world.activeOwner ?? null,
+      dir: { x: t.x - origin.x, y: t.y - origin.y },
+    });
     hits += 1;
   }
   return hits;
@@ -174,7 +182,11 @@ export function circleDamage(
     if (!t || !movement) continue;
     const distance = Math.hypot(t.x - center.x, t.y - center.y);
     if (distance > radius + movement.radius) continue;
-    applyDamage(world, id, damage, { ...options, dir: { x: t.x - center.x, y: t.y - center.y } });
+    applyDamage(world, id, damage, {
+      ...options,
+      ownerId: options.ownerId ?? world.activeOwner ?? null,
+      dir: { x: t.x - center.x, y: t.y - center.y },
+    });
     hits += 1;
   }
   return hits;

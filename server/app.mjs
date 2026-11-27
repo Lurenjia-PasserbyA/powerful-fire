@@ -559,6 +559,10 @@ ${cfg.gui ? '<p><a style="color:#ff6b35" href="/console">打开 Web 控制台 �
 
       if (payload.type === 'ping') {
         sendEnvelope(socket, 'server', { type: 'pong', at: payload.at ?? now, now });
+        // 客机心跳也要让房主知道连接仍在，避免暂停/切后台时被当成幽灵清掉。
+        if (socket.pf.role === 'client' && room.host && room.host.readyState === 1) {
+          room.host.send(JSON.stringify({ from: socket.pf.id, data: { type: 'ping' } }));
+        }
         return;
       }
 
@@ -642,6 +646,17 @@ ${cfg.gui ? '<p><a style="color:#ff6b35" href="/console">打开 Web 控制台 �
       if (room.host && room.host.readyState === 1) {
         sendEnvelope(socket, 'server', { type: 'register-error', code: 'room-taken' });
         return;
+      }
+      // 房主重开/重连后旧客机的 netId 已失效：主动断开，让它们重新 join 拿新实体。
+      if (room.clients.size > 0) {
+        for (const client of room.clients.values()) {
+          try {
+            client.socket.close(4000, 'host restarted');
+          } catch {
+            /* 已关闭 */
+          }
+        }
+        room.clients.clear();
       }
       socket.pf = { ...socket.pf, room: code, role: 'host', name };
       if (!existed) record('room', '房间创建', code);

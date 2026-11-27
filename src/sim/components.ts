@@ -1,4 +1,4 @@
-import type { Vec2 } from '../types';
+import type { EntityId, Vec2 } from '../types';
 import type { BiomeId } from '../data/biomes';
 
 /** 世界变换：prev* 字段供渲染插值使用（逻辑只读 x/y/angle）。 */
@@ -31,6 +31,8 @@ export interface Movement {
 export interface Health {
   hp: number;
   maxHp: number;
+  /** 最近一次伤害来源；敌人自爆等非直接伤害也按这个归属。 */
+  lastHitBy?: EntityId;
 }
 
 export type EnemyState = 'idle' | 'chase' | 'windup' | 'recover' | 'retreat' | 'dash';
@@ -50,6 +52,8 @@ export interface Statuses {
   burning: number;
   flammable: number;
   corroding: number;
+  /** 点燃来源玩家，持续伤害按该玩家结算击杀与充能。 */
+  burnOwner?: number | null;
 }
 
 export interface Player {

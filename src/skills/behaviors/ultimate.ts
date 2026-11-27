@@ -1,12 +1,11 @@
 import type { SkillData } from '../../data/skills';
 import type { CastContext } from '../../sim/runtime';
-import { circleDamage, playerSnapshot, spawnArea } from '../helpers';
+import { circleDamage, spawnArea } from '../helpers';
 
 /** 焚天：以玩家为中心的全屏火雨，持续 6 秒。 */
 export function castUltRain(ctx: CastContext, data: SkillData): void {
   const { world } = ctx;
-  const player = playerSnapshot(world);
-  const center = player ?? ctx.origin;
+  const center = ctx.origin;
   spawnArea(world, {
     kind: 'rain',
     x: center.x,
@@ -37,6 +36,7 @@ export function castUltBaguettes(ctx: CastContext, data: SkillData): void {
         damage: data.damage,
         ignite: 2,
         delay: 0.25,
+        ownerId: ctx.caster,
       });
     });
   }
@@ -45,8 +45,7 @@ export function castUltBaguettes(ctx: CastContext, data: SkillData): void {
 /** 熔核超载：8 秒零冷却 + 伤害翻倍，结束后虚弱。 */
 export function castUltOverdrive(ctx: CastContext, data: SkillData): void {
   const { world } = ctx;
-  const id = world.playerId;
-  if (id === null) return;
+  const id = ctx.caster;
   const player = world.players.get(id);
   if (!player) return;
   const duration = data.duration ?? 8;
@@ -56,7 +55,7 @@ export function castUltOverdrive(ctx: CastContext, data: SkillData): void {
     spawnArea(world, { kind: 'telegraph', x: transform.x, y: transform.y, radius: 90, life: 0.5 });
   }
   world.timers.after(duration, () => {
-    const current = world.playerId !== null ? world.players.get(world.playerId) : undefined;
+    const current = world.players.get(id);
     if (current) current.weakTimer = Math.max(current.weakTimer, 3);
   });
 }
@@ -64,8 +63,7 @@ export function castUltOverdrive(ctx: CastContext, data: SkillData): void {
 /** 凤凰涅槃：满血复活 + 全屏爆发 + 净化敌人身上的火。 */
 export function castUltPhoenix(ctx: CastContext, data: SkillData): void {
   const { world } = ctx;
-  const id = world.playerId;
-  if (id === null) return;
+  const id = ctx.caster;
   const player = world.players.get(id);
   if (!player) return;
   const transform = world.transforms.get(id);
@@ -97,8 +95,7 @@ export function castUltPhoenix(ctx: CastContext, data: SkillData): void {
 /** 超新星：以玩家为中心的大范围爆发，给予短时护盾。 */
 export function castUltSupernova(ctx: CastContext, data: SkillData): void {
   const { world } = ctx;
-  const id = world.playerId;
-  if (id === null) return;
+  const id = ctx.caster;
   const player = world.players.get(id);
   const transform = world.transforms.get(id);
   if (!player || !transform) return;

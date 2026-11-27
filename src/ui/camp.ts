@@ -27,6 +27,8 @@ interface CampOptions {
   world: GameWorld;
   onOpenShop: () => void;
   onStateChange: () => void;
+  /** 联机客机：返回 true 表示升级请求已交给主机。 */
+  onUpgrade?: (kind: UpgradeKind) => boolean;
 }
 
 function must<T>(value: T | null): T {
@@ -76,6 +78,12 @@ export function createCampUi(options: CampOptions): CampUi {
     if (!button) return;
     const kind = button.dataset.upgrade as UpgradeKind | undefined;
     if (!kind) return;
+    if (options.onUpgrade?.(kind)) {
+      message = '已向主机请求升级';
+      noticeEl.textContent = message;
+      refresh();
+      return;
+    }
     const result = applyUpgrade(world, kind);
     message = result.message;
     noticeEl.textContent = message;

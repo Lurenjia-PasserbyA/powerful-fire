@@ -137,7 +137,13 @@ function executeSkill(world: GameWorld, id: EntityId, player: Player, skillId: s
     world,
     rng: world.rng,
   };
-  def.fire(ctx);
+  const previousOwner = world.activeOwner;
+  world.activeOwner = id;
+  try {
+    def.fire(ctx);
+  } finally {
+    world.activeOwner = previousOwner;
+  }
 }
 
 function tryUltimate(world: GameWorld, id: EntityId, player: Player): void {

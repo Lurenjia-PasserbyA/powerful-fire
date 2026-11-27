@@ -13,6 +13,7 @@ export function buildSnapshot(
   playerId: EntityId,
   backend: string,
   stats: LoopStats,
+  remote?: { wave: number; biomeName: string; boss: { name: string; ratio: number } | null },
 ): HudSnapshot | null {
   const player = world.players.get(playerId);
   const transform = world.transforms.get(playerId);
@@ -30,8 +31,9 @@ export function buildSnapshot(
     };
   });
   const ultData = player.ultimate ? registry.get(player.ultimate)?.data : undefined;
-  let boss: HudSnapshot['boss'] = null;
+  let boss: HudSnapshot['boss'] = remote?.boss ?? null;
   for (const id of world.enemies.keys()) {
+    if (boss) break;
     const enemy = world.enemies.get(id);
     if (!enemy) continue;
     const data = enemyData(enemy.type);
@@ -53,8 +55,8 @@ export function buildSnapshot(
     activeSlot: player.activeSlot,
     ultimate: ultData ? { name: ultData.name, charge: player.ultimateCharge } : null,
     kills: player.kills,
-    wave: world.wave,
-    biomeName: world.biomeName,
+    wave: remote?.wave ?? world.wave,
+    biomeName: remote?.biomeName ?? world.biomeName,
     stamina: player.stamina,
     staminaMax: player.staminaMax,
     inBase: isInBase(world, transform),

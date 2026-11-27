@@ -7,6 +7,9 @@ export type ProjectileKind = 'fireball' | 'rocket' | 'baguette' | 'nail' | 'ghos
 
 export interface Projectile {
   active: boolean;
+  serial?: number;
+  /** 造成该投射物的玩家，用于伤害加成、击杀归属与回旋返回。 */
+  ownerId?: number | null;
   kind: ProjectileKind;
   x: number;
   y: number;
@@ -55,6 +58,8 @@ export type AreaKind =
 
 export interface Area {
   active: boolean;
+  serial?: number;
+  ownerId?: number | null;
   kind: AreaKind;
   x: number;
   y: number;
@@ -76,6 +81,7 @@ export interface Area {
 
 export interface XpOrb {
   active: boolean;
+  serial?: number;
   x: number;
   y: number;
   prevX: number;

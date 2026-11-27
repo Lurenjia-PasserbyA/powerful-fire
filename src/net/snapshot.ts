@@ -1,5 +1,6 @@
+import { enemyData } from '../data/enemies';
 import type { GameWorld } from '../sim/world';
-import type { EnemySnapshot, PlayerSnapshot, Snapshot } from './protocol';
+import type { BossSnapshot, EnemySnapshot, PlayerSnapshot, Snapshot } from './protocol';
 
 export interface NetPlayerRef {
   netId: number;
@@ -34,6 +35,9 @@ export function buildSnapshot(world: GameWorld, refs: NetPlayerRef[], tick: numb
       ultimate: player.ultimate,
       ultimateCharge: round(player.ultimateCharge * 100) / 100,
       cooldowns,
+      kills: player.kills,
+      deaths: player.deaths,
+      shield: round(player.shield),
       remote: player.remote,
     });
   }
@@ -59,6 +63,7 @@ export function buildSnapshot(world: GameWorld, refs: NetPlayerRef[], tick: numb
     .filter((projectile) => projectile.active)
     .slice(0, 180)
     .map((projectile) => ({
+      id: projectile.serial ?? 0,
       x: round(projectile.x),
       y: round(projectile.y),
       angle: round(projectile.angle),
@@ -69,6 +74,7 @@ export function buildSnapshot(world: GameWorld, refs: NetPlayerRef[], tick: numb
     .filter((area) => area.active)
     .slice(0, 40)
     .map((area) => ({
+      id: area.serial ?? 0,
       x: round(area.x),
       y: round(area.y),
       angle: round(area.angle),
@@ -83,9 +89,42 @@ export function buildSnapshot(world: GameWorld, refs: NetPlayerRef[], tick: numb
   const orbs = world.orbs
     .filter((orb) => orb.active)
     .slice(0, 120)
-    .map((orb) => ({ x: round(orb.x), y: round(orb.y), value: orb.value }));
+    .map((orb) => ({ id: orb.serial ?? 0, x: round(orb.x), y: round(orb.y), value: orb.value }));
 
-  return { tick, time: Date.now(), players, enemies, projectiles, areas, orbs };
+  let boss: BossSnapshot | null = null;
+  for (const entityId of world.enemies.keys()) {
+    const enemy = world.enemies.get(entityId);
+    if (!enemy) continue;
+    const data = enemyData(enemy.type);
+    if (!data.boss) continue;
+    const health = world.healths.get(entityId);
+    if (!health) continue;
+    boss = { name: data.name, hp: round(health.hp), maxHp: health.maxHp, phase: enemy.phase };
+    break;
+  }
+
+  return {
+    tick,
+    time: Date.now(),
+    players,
+    enemies,
+    projectiles,
+    areas,
+    orbs,
+    world: {
+      wave: world.wave,
+      biomeId: world.biomeId,
+      biomeName: world.biomeName,
+      elapsed: round(world.elapsed),
+      seed: world.seed,
+    },
+    progress: {
+      unlocked: [...world.progress.unlocked],
+      upgrades: { ...world.progress.upgrades },
+      spent: world.progress.spent,
+    },
+    boss,
+  };
 }
 
 function round(value: number): number {

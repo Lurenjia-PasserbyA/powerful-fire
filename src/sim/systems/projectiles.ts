@@ -6,14 +6,13 @@ import type { Projectile } from '../runtime';
 
 /** 投射物：飞行、追踪、回旋、分裂、连锁与命中结算。 */
 export function projectileSystem(world: GameWorld, dt: number): void {
-  const player = playerSnapshot(world);
 
   for (const p of world.projectiles) {
     if (!p.active) continue;
     p.prevX = p.x;
     p.prevY = p.y;
 
-    steer(world, p, dt, player);
+    steer(world, p, dt, ownerPoint(world, p.ownerId));
     if (!p.active) continue;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
@@ -30,7 +29,7 @@ export function projectileSystem(world: GameWorld, dt: number): void {
     }
 
     if (p.life <= 0) {
-      if (p.explodeRadius > 0) explode(world, p.x, p.y, p.explodeRadius, p.explodeDamage, p.ignite, p.knockback);
+      if (p.explodeRadius > 0) explode(world, p.x, p.y, p.explodeRadius, p.explodeDamage, p.ignite, p.knockback, p.ownerId ?? null);
       releaseProjectile(world, p);
       continue;
     }
@@ -49,6 +48,7 @@ export function projectileSystem(world: GameWorld, dt: number): void {
 
       p.hitIds.push(id);
       const dealt = applyDamage(world, id, p.damage, {
+        ownerId: p.ownerId ?? null,
         ignite: p.ignite,
         flammable: p.flammable,
         corroding: p.corroding,
@@ -58,7 +58,7 @@ export function projectileSystem(world: GameWorld, dt: number): void {
       });
 
       if (p.explodeRadius > 0) {
-        explode(world, p.x, p.y, p.explodeRadius, p.explodeDamage, p.ignite, p.knockback);
+        explode(world, p.x, p.y, p.explodeRadius, p.explodeDamage, p.ignite, p.knockback, p.ownerId ?? null);
       }
       if (p.chain > 0) {
         chainProjectile(world, p, id, dealt);
@@ -114,14 +114,30 @@ function rotateToward(current: number, target: number, maxStep: number): number 
   return current + Math.sign(delta) * maxStep;
 }
 
-function explode(world: GameWorld, x: number, y: number, radius: number, damage: number, ignite: number, knockback: number): void {
+function explode(
+  world: GameWorld,
+  x: number,
+  y: number,
+  radius: number,
+  damage: number,
+  ignite: number,
+  knockback: number,
+  ownerId: number | null,
+): void {
   world.bus.emit('fx:explosion', { x, y, radius, power: Math.max(1, radius / 90) });
   circleDamage(world, { x, y }, radius, damage, {
     fromPlayer: true,
+    ownerId,
     ignite,
     knockback,
     kind: 'explosion',
   });
+}
+
+function ownerPoint(world: GameWorld, ownerId: number | null | undefined): { x: number; y: number } | null {
+  if (ownerId == null) return playerSnapshot(world);
+  const transform = world.transforms.get(ownerId);
+  return transform ? { x: transform.x, y: transform.y } : playerSnapshot(world);
 }
 
 function chainProjectile(world: GameWorld, source: Projectile, hitId: number, dealt: number): void {
@@ -165,6 +181,7 @@ function chainProjectile(world: GameWorld, source: Projectile, hitId: number, de
   p.originX = from.x;
   p.originY = from.y;
   p.maxTravel = 0;
+  p.ownerId = source.ownerId ?? null;
   world.projectiles.push(p);
 }
 
@@ -209,6 +226,7 @@ function splitProjectile(world: GameWorld, source: Projectile): void {
     p.originX = p.x;
     p.originY = p.y;
     p.maxTravel = 0;
+    p.ownerId = source.ownerId ?? null;
     world.projectiles.push(p);
   }
 }

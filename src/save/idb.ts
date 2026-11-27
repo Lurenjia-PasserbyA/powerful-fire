@@ -1,3 +1,5 @@
+import { storage } from '../core/storage';
+
 /** IndexedDB 的最小封装：不引入第三方依赖，失败时回退 localStorage。 */
 
 const DB_NAME = 'powerful-fire';
@@ -11,7 +13,13 @@ function openDb(): Promise<IDBDatabase | null> {
       resolve(null);
       return;
     }
-    const request = indexedDB.open(DB_NAME, 1);
+    let request: IDBOpenDBRequest;
+    try {
+      request = indexedDB.open(DB_NAME, 1);
+    } catch {
+      resolve(null);
+      return;
+    }
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
@@ -24,7 +32,7 @@ function openDb(): Promise<IDBDatabase | null> {
 export async function readSave(): Promise<unknown | null> {
   const db = await openDb();
   if (!db) {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = storage.getItem(LS_KEY);
     return raw ? (JSON.parse(raw) as unknown) : null;
   }
   return new Promise((resolve) => {
@@ -38,7 +46,7 @@ export async function readSave(): Promise<unknown | null> {
 export async function writeSave(value: unknown): Promise<void> {
   const db = await openDb();
   if (!db) {
-    localStorage.setItem(LS_KEY, JSON.stringify(value));
+    storage.setItem(LS_KEY, JSON.stringify(value));
     return;
   }
   await new Promise<void>((resolve) => {
@@ -52,7 +60,7 @@ export async function writeSave(value: unknown): Promise<void> {
 /** 页面卸载时的同步兜底（IndexedDB 异步写入可能来不及完成）。 */
 export function writeSaveSync(value: unknown): void {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(value));
+    storage.setItem(LS_KEY, JSON.stringify(value));
   } catch {
     // 隐私模式下配额可能不可用，忽略即可
   }
@@ -60,7 +68,7 @@ export function writeSaveSync(value: unknown): void {
 
 export function readSaveSync(): unknown | null {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = storage.getItem(LS_KEY);
     return raw ? (JSON.parse(raw) as unknown) : null;
   } catch {
     return null;
@@ -77,5 +85,5 @@ export async function clearSave(): Promise<void> {
       tx.onerror = () => resolve();
     });
   }
-  localStorage.removeItem(LS_KEY);
+  storage.removeItem(LS_KEY);
 }

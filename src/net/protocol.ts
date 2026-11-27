@@ -22,6 +22,9 @@ export interface PlayerSnapshot {
   ultimate: string | null;
   ultimateCharge: number;
   cooldowns: number[];
+  kills: number;
+  deaths: number;
+  shield: number;
   remote: boolean;
 }
 
@@ -36,6 +39,7 @@ export interface EnemySnapshot {
 }
 
 export interface ProjectileSnapshot {
+  id: number;
   x: number;
   y: number;
   angle: number;
@@ -43,6 +47,7 @@ export interface ProjectileSnapshot {
 }
 
 export interface AreaSnapshot {
+  id: number;
   x: number;
   y: number;
   angle: number;
@@ -55,9 +60,31 @@ export interface AreaSnapshot {
 }
 
 export interface OrbSnapshot {
+  id: number;
   x: number;
   y: number;
   value: number;
+}
+
+export interface BossSnapshot {
+  name: string;
+  hp: number;
+  maxHp: number;
+  phase: number;
+}
+
+export interface WorldSnapshot {
+  wave: number;
+  biomeId: string;
+  biomeName: string;
+  elapsed: number;
+  seed: number;
+}
+
+export interface ProgressSnapshot {
+  unlocked: string[];
+  upgrades: { hp: number; speed: number; damage: number };
+  spent: number;
 }
 
 export interface Snapshot {
@@ -68,6 +95,9 @@ export interface Snapshot {
   projectiles: ProjectileSnapshot[];
   areas: AreaSnapshot[];
   orbs: OrbSnapshot[];
+  world: WorldSnapshot;
+  progress: ProgressSnapshot;
+  boss: BossSnapshot | null;
 }
 
 export interface NetInput {
@@ -79,6 +109,9 @@ export interface NetInput {
   ult: boolean;
   sprint: boolean;
   slot: number;
+  /** 客机当前装配；主机负责校验并应用到远端玩家。 */
+  slots?: Array<string | null>;
+  ultimate?: string | null;
 }
 
 export type NetMessage =
@@ -86,7 +119,11 @@ export type NetMessage =
   | { type: 'welcome'; netId: number; entityId: number; room: string; hostName: string; seed: number }
   | { type: 'input'; input: NetInput }
   | { type: 'snapshot'; snapshot: Snapshot }
+  | { type: 'buy'; skillId: string }
+  | { type: 'upgrade'; kind: 'hp' | 'speed' | 'damage' }
+  | { type: 'action-result'; action: 'buy' | 'upgrade'; ok: boolean; message: string }
   | { type: 'leave' }
+  | { type: 'ping' }
   | { type: 'ping'; at: number }
   | { type: 'pong'; at: number }
   | { type: 'register-ok'; role: string; id?: string; token?: string; room?: string }

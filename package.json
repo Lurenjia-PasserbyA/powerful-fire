@@ -2,9 +2,9 @@
   "name": "powerful-fire",
   "main": "desktop/main.cjs",
   "private": true,
-  "version": "1.2.2",
+  "version": "1.2.3",
   "type": "module",
-  "description": "Powerful Fire v1.2.2 — 2D top-down fire action RPG with 38 skills, 16 enemies, 5 biomes, pooled particle FX, directional recoil, LAN/WebSocket co-op and flat-tech UI.",
+  "description": "Powerful Fire v1.2.3 — 2D top-down fire action RPG with authoritative LAN co-op, 38 skills, 16 enemies, 5 biomes, pooled particle FX, directional recoil and flat-tech UI.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

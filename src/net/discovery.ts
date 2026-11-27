@@ -1,3 +1,5 @@
+import { storage } from '../core/storage';
+
 export interface ServerEntry {
   id: string;
   name: string;
@@ -137,7 +139,7 @@ export function probeServer(wsUrl: string, timeoutMs = 3000): Promise<number | n
 
 export function recentServers(): string[] {
   try {
-    const raw = localStorage.getItem(RECENT_KEY);
+    const raw = storage.getItem(RECENT_KEY);
     const list = raw ? (JSON.parse(raw) as unknown) : [];
     return Array.isArray(list) ? list.filter((item): item is string => typeof item === 'string').slice(0, 6) : [];
   } catch {
@@ -150,7 +152,7 @@ export function saveRecentServer(base: string): void {
   if (!http) return;
   try {
     const list = [http, ...recentServers().filter((item) => item !== http)].slice(0, 6);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+    storage.setItem(RECENT_KEY, JSON.stringify(list));
   } catch {
     /* 隐私模式忽略 */
   }

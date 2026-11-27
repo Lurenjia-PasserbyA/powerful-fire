@@ -1,10 +1,10 @@
 import type { SkillData } from '../../data/skills';
 import type { CastContext } from '../../sim/runtime';
-import { spawnArea, spawnProjectile, coneDamage, playerSnapshot, applyStatus } from '../helpers';
+import { spawnArea, spawnProjectile, coneDamage, applyStatus } from '../helpers';
 
 /** 法棍系：近战扇形、双段连击、回旋镖、易燃标记。 */
 export function castMeleeArc(ctx: CastContext, data: SkillData): void {
-  const { world } = ctx;
+  const { world, origin, aim } = ctx;
   const hits = data.hits ?? 1;
   const range = data.range ?? 100;
   const arc = data.arc ?? 90;
@@ -12,20 +12,18 @@ export function castMeleeArc(ctx: CastContext, data: SkillData): void {
 
   for (let i = 0; i < hits; i += 1) {
     const strike = (): void => {
-      const player = playerSnapshot(world);
-      if (!player) return;
-      const aim = world.input.aimWorld;
       spawnArea(world, {
         kind: 'slash',
-        x: player.x,
-        y: player.y,
-        angle: Math.atan2(aim.y - player.y, aim.x - player.x),
+        x: origin.x,
+        y: origin.y,
+        angle: Math.atan2(aim.y - origin.y, aim.x - origin.x),
         length: range,
         width: arc,
         life: 0.18,
       });
       const knock = i === hits - 1 ? (data.knockback ?? 0) : (data.knockback ?? 0) * 0.4;
-      coneDamage(world, { x: player.x, y: player.y }, aim, arc, range, damage, {
+      coneDamage(world, origin, aim, arc, range, damage, {
+        ownerId: ctx.caster,
         ignite: data.ignite,
         knockback: knock,
         fromPlayer: true,

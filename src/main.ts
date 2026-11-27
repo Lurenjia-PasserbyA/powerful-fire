@@ -22,7 +22,7 @@ import { facilityAt, isInBase, type Facility } from './sim/base';
 import { setupAudio } from './app/audio-setup';
 import { collectMounts } from './app/mounts';
 import { setupSave } from './app/save-setup';
-import { setupNet } from './app/net-setup';
+import { setupNet, type NetRuntime } from './app/net-setup';
 import { SaveManager } from './save/manager';
 import { buildSnapshot } from './app/hud-bridge';
 import { installDebug, type DebugHandle } from './app/debug';
@@ -127,9 +127,12 @@ async function bootstrap(): Promise<void> {
   });
   if (menuOpen) startMenu.show();
 
+  let net: NetRuntime | null = null;
   const shop = createShop(shopRoot, {
     world,
     onStateChange: () => pushHud(),
+    onBuy: (skillId) => (net?.isClient ? net.requestBuy(skillId) : false),
+    onLoadout: (slots, ultimate) => net?.isClient && net.requestLoadout(slots, ultimate),
   });
 
   const camp = createCampUi({
@@ -138,9 +141,21 @@ async function bootstrap(): Promise<void> {
     world,
     onOpenShop: () => shop.open(),
     onStateChange: () => pushHud(),
+    onUpgrade: (kind) => (net?.isClient ? net.requestUpgrade(kind) : false),
   });
 
-  world.bus.on('ui:notice', (payload) => hud.notify(payload.text, payload.kind === 'info' ? 'info' : 'warn'));
+  let lastPanelRefresh = 0;
+  world.bus.on('net:snapshot', () => {
+    if (Date.now() - lastPanelRefresh < 120) return;
+    lastPanelRefresh = Date.now();
+    if (shop.isOpen()) shop.refresh();
+    if (camp.isUpgradeOpen()) camp.refresh();
+  });
+  world.bus.on('ui:notice', (payload) => {
+    hud.notify(payload.text, payload.kind === 'info' ? 'info' : 'warn');
+    if (shop.isOpen()) shop.refresh();
+    if (camp.isUpgradeOpen()) camp.refresh();
+  });
   world.bus.on('player:levelup', (payload) => hud.levelUp(payload.level));
   world.bus.on('player:hurt', (payload) => {
     hud.hurtFlash();
@@ -205,7 +220,7 @@ async function bootstrap(): Promise<void> {
   });
   hookAudio(audio, world);
   const saveHandle = setupSave(saveStore, world, audio, hud);
-  const net = await setupNet(world, render.layers, hudRoot);
+  net = await setupNet(world, render.layers, hudRoot);
 
   const mapPointer = (clientX: number, clientY: number): Vec2 => {
     const rect = stage.getBoundingClientRect();
@@ -382,7 +397,7 @@ async function bootstrap(): Promise<void> {
   };
 
   function pushHud(): void {
-    const snapshot = buildSnapshot(world, registry, playerId, backend, loop.currentStats);
+    const snapshot = buildSnapshot(world, registry, playerId, backend, loop.currentStats, net?.hudState() ?? undefined);
     if (snapshot) hud.update(snapshot);
   }
 

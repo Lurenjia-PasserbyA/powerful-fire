@@ -13,6 +13,10 @@ export interface Shop {
 interface ShopOptions {
   world: GameWorld;
   onStateChange: () => void;
+  /** 联机客机：返回 true 表示请求已交给主机，本地不做扣费。 */
+  onBuy?: (skillId: string) => boolean;
+  /** 联机客机：装备槽/大招变化后同步给主机。 */
+  onLoadout?: (slots: Array<string | null>, ultimate: string | null) => void;
 }
 
 type Filter = 'all' | SkillSchool;
@@ -108,6 +112,11 @@ export function createShop(host: HTMLElement, options: ShopOptions): Shop {
     const data = skills.find((skill) => skill.id === id);
     const p = player();
     if (!data || !p) return;
+    if (options.onBuy?.(id)) {
+      setNotice('已向主机请求购买');
+      refresh();
+      return;
+    }
     if (world.progress.unlocked.has(id)) {
       setNotice('已拥有');
       return;
@@ -145,6 +154,7 @@ export function createShop(host: HTMLElement, options: ShopOptions): Shop {
     if (def?.data.behavior === 'passive_revive') p.reviveReady = true;
     refresh();
     options.onStateChange();
+    options.onLoadout?.([...p.slots], p.ultimate);
   }
 
   function matches(skill: SkillData): boolean {

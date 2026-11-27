@@ -13,6 +13,7 @@ import type {
   Velocity,
 } from './components';
 import type { GameWorld } from './world';
+import { syncUpgrades } from './upgrades';
 
 export function spawnPlayer(world: GameWorld, position?: { x: number; y: number }): EntityId {
   const id = createPlayerEntity(world, position, false);
@@ -102,6 +103,7 @@ function createPlayerEntity(
   world.playerIds.push(id);
 
   if (hasFeather(world, player)) player.reviveReady = true;
+  syncUpgrades(world);
   world.bus.emit('player:spawn', { id });
   return id;
 }
@@ -122,7 +124,7 @@ export function spawnEnemy(world: GameWorld, type: string, x: number, y: number)
   const knockback: Knockback = { x: 0, y: 0 };
   const movement: Movement = { speed: data.speed, radius: data.radius };
   const health: Health = { hp: data.hp, maxHp: data.hp };
-  const statuses: Statuses = { burning: 0, flammable: 0, corroding: 0 };
+  const statuses: Statuses = { burning: 0, flammable: 0, corroding: 0, burnOwner: null };
   const enemy: Enemy = {
     type,
     state: 'idle',

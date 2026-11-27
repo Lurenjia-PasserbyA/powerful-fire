@@ -74,6 +74,7 @@ export interface GameWorld {
   readonly players: Store<Player>;
   readonly aims: Store<Aim>;
   readonly input: InputBuffer;
+  readonly seed: number;
   readonly rng: Rng;
   readonly timers: FrameTimers;
   readonly bus: EventBus<GameEvents>;
@@ -105,6 +106,8 @@ export interface GameWorld {
   playerIds: EntityId[];
   /** 远端玩家输入：实体 → 该帧控制状态。 */
   remoteInputs: Map<EntityId, RemoteInput>;
+  /** 当前同步执行技能的施法者，供投射物/区域记录归属；技能结束后恢复。 */
+  activeOwner: EntityId | null;
 }
 
 function makeProjectile(): Projectile {
@@ -222,6 +225,7 @@ export function createGameWorld(options: {
       touchMode: false,
       sprint: false,
     },
+    seed,
     rng: createRng(seed),
     timers: new FrameTimers(),
     bus: new EventBus<GameEvents>(),
@@ -256,5 +260,6 @@ export function createGameWorld(options: {
     playerId: null,
     playerIds: [],
     remoteInputs: new Map(),
+    activeOwner: null,
   };
 }

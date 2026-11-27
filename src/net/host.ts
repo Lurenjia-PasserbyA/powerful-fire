@@ -4,6 +4,8 @@ import { config } from '../data/config';
 import type { NetInput, NetMessage, Transport } from './protocol';
 import { buildSnapshot, type NetPlayerRef } from './snapshot';
 import type { Snapshot } from './protocol';
+import { buySkill } from '../sim/systems/economy';
+import { applyUpgrade, type UpgradeKind } from '../sim/upgrades';
 
 interface ClientRecord {
   transportId: string;
@@ -11,6 +13,7 @@ interface ClientRecord {
   entityId: number;
   name: string;
   lastInputAt: number;
+  lastSeenAt: number;
 }
 
 /** 主机：唯一跑模拟的端。接受加入/输入，20Hz 广播权威快照。 */
@@ -78,10 +81,53 @@ export class HostSession {
     }
     if (msg.type === 'leave') {
       this.removeClient(from);
+      return;
+    }
+    if (msg.type === 'ping') {
+      const client = this.clients.get(from);
+      if (client) client.lastSeenAt = performance.now();
+      return;
+    }
+    if (msg.type === 'buy') {
+      this.handleBuy(from, msg.skillId);
+      return;
+    }
+    if (msg.type === 'upgrade') {
+      this.handleUpgrade(from, msg.kind);
     }
   }
 
+  private handleBuy(from: string, skillId: string): void {
+    const client = this.clients.get(from);
+    if (!client) return;
+    const result = buySkill(this.world, client.entityId, String(skillId || ''));
+    this.transport.send(
+      { type: 'action-result', action: 'buy', ok: result.ok, message: result.message },
+      from,
+    );
+  }
+
+  private handleUpgrade(from: string, kind: UpgradeKind): void {
+    const client = this.clients.get(from);
+    if (!client) return;
+    if (kind !== 'hp' && kind !== 'speed' && kind !== 'damage') return;
+    const result = applyUpgrade(this.world, kind, client.entityId);
+    this.transport.send(
+      { type: 'action-result', action: 'upgrade', ok: result.ok, message: result.message },
+      from,
+    );
+  }
+
   private handleJoin(name: string, from: string): void {
+    const existing = this.clients.get(from);
+    if (existing) {
+      existing.lastSeenAt = performance.now();
+      this.transport.send(
+        { type: 'welcome', netId: existing.netId, entityId: existing.entityId, room: '', hostName: this.hostName, seed: this.world.seed },
+        from,
+      );
+      return;
+    }
     if (this.clients.size >= this.maxClients) {
       return;
     }
@@ -99,10 +145,11 @@ export class HostSession {
       entityId,
       name: safeName,
       lastInputAt: performance.now(),
+      lastSeenAt: performance.now(),
     });
     this.refs.push({ netId, entityId, name: safeName });
     this.transport.send(
-      { type: 'welcome', netId, entityId, room: '', hostName: this.hostName, seed: 0 },
+      { type: 'welcome', netId, entityId, room: '', hostName: this.hostName, seed: this.world.seed },
       from,
     );
     this.joinHandler?.(this.refs.length);
@@ -127,8 +174,34 @@ export class HostSession {
     remote.ultPressed = Boolean(input.ult);
     remote.sprint = Boolean(input.sprint);
     const player = this.world.players.get(client.entityId);
-    if (player && input.slot >= 0 && input.slot <= 2) player.activeSlot = input.slot as 0 | 1 | 2;
+    if (player) {
+      if (input.slot >= 0 && input.slot <= 2) player.activeSlot = input.slot as 0 | 1 | 2;
+      this.applyLoadout(player, input.slots, input.ultimate);
+    }
     client.lastInputAt = performance.now();
+    client.lastSeenAt = performance.now();
+  }
+
+  private applyLoadout(
+    player: NonNullable<ReturnType<GameWorld['players']['get']>>,
+    slots: Array<string | null> | undefined,
+    ultimate: string | null | undefined,
+  ): void {
+    if (Array.isArray(slots) && slots.length === 3) {
+      const next: [string | null, string | null, string | null] = [null, null, null];
+      for (let i = 0; i < 3; i += 1) {
+        const id = slots[i];
+        if (typeof id !== 'string') continue;
+        if (!this.world.registry.has(id) || !this.world.progress.unlocked.has(id)) continue;
+        next[i] = id;
+      }
+      player.slots = next;
+    }
+    if (ultimate === null) {
+      player.ultimate = null;
+    } else if (typeof ultimate === 'string' && this.world.registry.has(ultimate) && this.world.progress.unlocked.has(ultimate)) {
+      player.ultimate = ultimate;
+    }
   }
 
   private removeClient(transportId: string): void {
@@ -159,7 +232,7 @@ export class HostSession {
         remote.ultPressed = false;
         remote.sprint = false;
       }
-      if (now - client.lastInputAt > 30000) this.removeClient(id);
+      if (now - client.lastSeenAt > 5000) this.removeClient(id);
     }
   }
 

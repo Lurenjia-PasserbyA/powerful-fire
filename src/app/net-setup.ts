@@ -7,6 +7,10 @@ import type { NetMessage, Transport } from '../net/protocol';
 import type { GameWorld } from '../sim/world';
 import { createNetPanel } from '../ui/net-panel';
 import { isSameOriginBroadcast, toWsUrl } from '../net/discovery';
+import { createGround } from '../render/ground';
+import { createRng } from '../core/rng';
+import { config } from '../data/config';
+import type { UpgradeKind } from '../sim/upgrades';
 
 export interface NetRuntime {
   active: boolean;
@@ -17,6 +21,12 @@ export interface NetRuntime {
   latency: number | null;
   update(dt: number): void;
   sync(): void;
+  /** 客机向主机请求购买/升级；房主本地返回 false，走本地逻辑。 */
+  requestBuy(skillId: string): boolean;
+  requestUpgrade(kind: UpgradeKind): boolean;
+  requestLoadout(slots: Array<string | null>, ultimate: string | null): boolean;
+  /** 客机 HUD 使用的主机元数据（波次、群系、Boss）。 */
+  hudState(): { wave: number; biomeName: string; boss: { name: string; ratio: number } | null } | null;
 }
 
 type Role = 'lan-host' | 'lan-client' | 'server';
@@ -58,6 +68,8 @@ export async function setupNet(
   let status = chip.textContent;
   let latency: number | null = null;
   let transport: Transport | null = null;
+  let client: ClientSession | null = null;
+  let hostSession: HostSession | null = null;
   let disposed = false;
 
   const setStatus = (text: string): void => {
@@ -80,6 +92,8 @@ export async function setupNet(
   window.addEventListener('beforeunload', () => {
     disposed = true;
     window.clearInterval(latencyTimer);
+    if (hostSession) hostSession.stop();
+    else client?.stop();
     transport?.close();
   });
 
@@ -88,6 +102,7 @@ export async function setupNet(
       ? new BroadcastTransport(room, 'lan-host')
       : new WebSocketTransport('lan-host', room, { name });
     const host = new HostSession(world, transport, name);
+    hostSession = host;
     const view = new NetView(layers, { playersOnly: true, excludeNetId: 0 });
     host.onSnapshot((snapshot) => view.apply(snapshot));
     host.onJoin((count) => setStatus(`${count}P`));
@@ -119,6 +134,18 @@ export async function setupNet(
       get latency() {
         return latency;
       },
+      requestBuy() {
+        return false;
+      },
+      requestUpgrade() {
+        return false;
+      },
+      requestLoadout() {
+        return false;
+      },
+      hudState() {
+        return null;
+      },
       update(dt: number) {
         host.update(dt);
       },
@@ -128,32 +155,55 @@ export async function setupNet(
     };
   }
 
-  let client: ClientSession | null = null;
   let view: NetView | null = null;
   let attempt = 0;
+  let connectGeneration = 0;
   let reconnectTimer = 0;
+
+  const rebuildGround = (seed: number): void => {
+    if (!Number.isFinite(seed) || seed <= 0) return;
+    for (const child of layers.ground.removeChildren()) child.destroy({ children: true });
+    layers.ground.addChild(
+      createGround({ config, rng: createRng(seed), spawn: { x: config.spawn.x, y: config.spawn.y } }),
+    );
+  };
 
   const connect = async (): Promise<void> => {
     if (disposed) return;
+    const generation = (connectGeneration += 1);
+    client?.dispose();
     transport = local
       ? new BroadcastTransport(room, 'lan-client')
       : new WebSocketTransport('lan-client', room, { name });
     const session = new ClientSession(world, transport, name, room);
     client = session;
+    view?.destroy();
     view = null;
-    session.onStatus(setStatus);
+    session.onStatus((text) => {
+      if (generation === connectGeneration) setStatus(text);
+    });
+    session.onSeed((seed) => {
+      if (generation === connectGeneration) rebuildGround(seed);
+    });
     session.onSnapshot((snapshot) => {
+      if (generation !== connectGeneration) return;
       attempt = 0;
       if (!view) view = new NetView(layers, { excludeNetId: session.netId });
       view.apply(snapshot);
       refreshChip();
     });
-    transport.onClose(() => scheduleReconnect('连接断开'));
+    transport.onClose(() => {
+      if (generation === connectGeneration) scheduleReconnect('连接断开');
+    });
     try {
       await session.start(wsUrl ?? undefined);
+      if (generation !== connectGeneration) {
+        session.stop();
+        return;
+      }
       setStatus('已连接，等待主机分配角色…');
     } catch {
-      scheduleReconnect('连接失败');
+      if (generation === connectGeneration) scheduleReconnect('连接失败');
     }
     pollLatency();
   };
@@ -186,6 +236,18 @@ export async function setupNet(
     },
     get latency() {
       return latency;
+    },
+    requestBuy(skillId: string) {
+      return client?.requestBuy(skillId) ?? false;
+    },
+    requestUpgrade(kind: UpgradeKind) {
+      return client?.requestUpgrade(kind) ?? false;
+    },
+    requestLoadout(slots, ultimate) {
+      return client?.requestLoadout(slots, ultimate) ?? false;
+    },
+    hudState() {
+      return client?.hudState() ?? null;
     },
     update(dt: number) {
       world.elapsed += dt;

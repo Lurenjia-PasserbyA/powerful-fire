@@ -13,7 +13,12 @@ export function statusSystem(world: GameWorld, dt: number): void {
 
     if (statuses.burning > 0) {
       const stacks = 1 + statuses.flammable * 0.5;
-      applyDamage(world, id, cfg.burnDps * stacks * dt, { kind: 'burn', silent: true });
+      applyDamage(world, id, cfg.burnDps * stacks * dt, {
+        kind: 'burn',
+        silent: true,
+        fromPlayer: statuses.burnOwner != null,
+        ownerId: statuses.burnOwner ?? null,
+      });
       statuses.burning = Math.max(0, statuses.burning - dt);
     }
     statuses.flammable = Math.max(0, statuses.flammable - cfg.flammableDecay * dt);
